@@ -40,14 +40,16 @@
 
                 _.each($scope.dashboard.widgets, function(row, rowIndex) {
                   _.each(row, function(widget, colIndex) {
-                    layout.push({
-                      id: widget.id,
-                      col: colIndex + 1,
-                      row: rowIndex + 1,
-                      ySize: 1,
-                      xSize: widget.width,
-                      name: widget.getName()//visualization.query.name
-                    });
+                    if (widget != null) {
+                      layout.push({
+                        id: widget.id,
+                        col: colIndex + 1,
+                        row: rowIndex + 1,
+                        ySize: 1,
+                        xSize: widget.width,
+                        name: widget.getName()//visualization.query.name
+                      });
+                    }
                   });
                 });
 

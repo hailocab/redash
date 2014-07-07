@@ -8,6 +8,23 @@
       $scope.$parent.pageTitle = dashboard.name;
       var filters = {};
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       $scope.dashboard.widgets = _.map($scope.dashboard.widgets, function (row) {
         return _.map(row, function (widget) {
           var w = new Widget(widget);
@@ -33,9 +50,41 @@
             });
           }
 
-          return w;
+          if (w.visualization.query.error == null) {
+          console.log('this is the if statement');        
+          return w;         
+          }
+
+          else {
+            return null;
+          }
+
+          
         });
       });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       if (dashboard.dashboard_filters_enabled) {
         $scope.filters = _.values(filters);
@@ -94,25 +143,28 @@
       $scope.widget.$delete(function() {
         $scope.dashboard.widgets = _.map($scope.dashboard.widgets, function(row) {
           return _.filter(row, function(widget) {
+
             return widget.id != undefined;
           })
         });
       });
     };
 
-    Events.record(currentUser, "view", "widget", $scope.widget.id);
+    if ($scope.widget != null) {
+      Events.record(currentUser, "view", "widget", $scope.widget.id);
 
-    if ($scope.widget.visualization) {
-      Events.record(currentUser, "view", "query", $scope.widget.visualization.query.id);
-      Events.record(currentUser, "view", "visualization", $scope.widget.visualization.id);
+      if ($scope.widget.visualization) {
+        Events.record(currentUser, "view", "query", $scope.widget.visualization.query.id);
+        Events.record(currentUser, "view", "visualization", $scope.widget.visualization.id);
 
-      $scope.query = $scope.widget.getQuery();
-      $scope.queryResult = $scope.query.getQueryResult();
-      $scope.nextUpdateTime = moment(new Date(($scope.query.updated_at + $scope.query.ttl + $scope.query.runtime + 300) * 1000)).fromNow();
+        $scope.query = $scope.widget.getQuery();
+        $scope.queryResult = $scope.query.getQueryResult();
+        $scope.nextUpdateTime = moment(new Date(($scope.query.updated_at + $scope.query.ttl + $scope.query.runtime + 300) * 1000)).fromNow();
 
-      $scope.type = 'visualization';
-    } else {
-      $scope.type = 'textbox';
+        $scope.type = 'visualization';
+      } else {
+        $scope.type = 'textbox';
+      }
     }
   };
 
