@@ -9,7 +9,8 @@ from passlib.apps import custom_app_context as pwd_context
 import peewee
 from playhouse.postgres_ext import ArrayField
 from redash import db, utils
-
+from flask_login import current_user, login_user, logout_user
+import logging
 
 class BaseModel(db.Model):
     @classmethod
@@ -151,6 +152,7 @@ class QueryResult(BaseModel):
     data_source = peewee.ForeignKeyField(DataSource)
     query_hash = peewee.CharField(max_length=32, index=True)
     query = peewee.TextField()
+    #query_tables = peewee.TextField()
     data = peewee.TextField()
     runtime = peewee.FloatField()
     retrieved_at = peewee.DateTimeField()
@@ -163,6 +165,7 @@ class QueryResult(BaseModel):
             'id': self.id,
             'query_hash': self.query_hash,
             'query': self.query,
+            #'query_tables': self.query,
             'data': json.loads(self.data),
             'data_source_id': self._data.get('data_source', None),
             'runtime': self.runtime,
@@ -201,6 +204,8 @@ class Query(BaseModel):
     user = peewee.ForeignKeyField(User)
     is_archived = peewee.BooleanField(default=False, index=True)
     created_at = peewee.DateTimeField(default=datetime.datetime.now)
+    
+
 
     class Meta:
         db_table = 'queries'
@@ -211,13 +216,38 @@ class Query(BaseModel):
                                             type="TABLE", options="{}")
         table_visualization.save()
 
-    def to_dict(self, with_result=True, with_stats=False, with_visualizations=False, with_user=True):
+
+    def to_dict(self, with_result=True, with_stats=False, with_visualizations=False, with_user=True):     
+
+        metadata = utils.SQLMetaData(self.query)  
+        result = [];
+        for t in metadata.used_tables:
+            result.append(t)
+
+
+
+        logging.warning(' ================================= %s', metadata.used_tables, current_user)
+
+
+  
+        b3 = [val for val in metadata.used_tables if val in current_user.allowed_tables]
+
+
+
+
+
+        if not current_user and not len(b3) == len(metadata.used_tables) and '*' not in current_user.allowed_tables:
+            return {
+                'error': 'Access denied for table(s): %s' % (result)
+            }
+
         d = {
             'id': self.id,
             'latest_query_data_id': self._data.get('latest_query_data', None),
             'name': self.name,
             'description': self.description,
             'query': self.query,
+            'query_tables': result,
             'query_hash': self.query_hash,
             'ttl': self.ttl,
             'api_key': self.api_key,
