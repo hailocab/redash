@@ -8,23 +8,6 @@
       $scope.$parent.pageTitle = dashboard.name;
       var filters = {};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       $scope.dashboard.widgets = _.map($scope.dashboard.widgets, function (row) {
         return _.map(row, function (widget) {
           var w = new Widget(widget);
@@ -50,41 +33,15 @@
             });
           }
 
-          if (w.visualization.query.error == null) {
-          console.log('this is the if statement');        
+          if (w.visualization.query.error == null) {                 
           return w;         
           }
 
           else {
             return null;
-          }
-
-          
+          }          
         });
       });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
       if (dashboard.dashboard_filters_enabled) {
         $scope.filters = _.values(filters);

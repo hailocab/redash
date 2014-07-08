@@ -40,7 +40,9 @@
       });
 
       filterQueries();
-    });
+    });    
+
+    if (this.error != null) {
 
     $scope.gridColumns = [
       {
@@ -94,7 +96,8 @@
           return $filter('refreshRateHumanize')(value);
         }
       }
-    ]
+    ] 
+  }
     $scope.tabs = [
       {"name": "My Queries", "key": "my"},
       {"key": "all", "name": "All Queries"},
