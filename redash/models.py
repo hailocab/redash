@@ -158,9 +158,10 @@ class QueryResult(BaseModel):
     retrieved_at = peewee.DateTimeField()
 
     class Meta:
-        db_table = 'query_results'
+        db_table = 'query_results'       
 
     def to_dict(self):
+
         return {
             'id': self.id,
             'query_hash': self.query_hash,
@@ -226,7 +227,7 @@ class Query(BaseModel):
 
         b3 = [val for val in metadata.used_tables if val in current_user.allowed_tables]
 
-        if not current_user and not len(b3) == len(metadata.used_tables) and '*' not in current_user.allowed_tables:
+        if True:#not current_user and not len(b3) == len(metadata.used_tables) and '*' not in current_user.allowed_tables:
             return {
                 'error': 'Access denied for table(s): %s' % (result)
             }

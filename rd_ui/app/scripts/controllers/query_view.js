@@ -5,6 +5,10 @@
     var DEFAULT_TAB = 'table';
 
     $scope.query = $route.current.locals.query;
+    console.log($scope.query.id);
+    if($scope.query.id != null) {
+
+
     Events.record(currentUser, 'view', 'query', $scope.query.id);
     $scope.queryResult = $scope.query.getQueryResult();
     $scope.queryExecuting = false;
@@ -15,6 +19,7 @@
     $scope.dataSources = DataSource.get(function(dataSources) {
       $scope.query.data_source_id = $scope.query.data_source_id || dataSources[0].id;
     });
+  }
 
     $scope.lockButton = function(lock) {
       $scope.queryExecuting = lock;

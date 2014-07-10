@@ -1,6 +1,6 @@
 
-<div class="container">
-
+<div class="container" ng-if="queryResult">
+ 
     <alert-unsaved-changes ng-if="canEdit" is-dirty="isDirty"></alert-unsaved-changes>
 
     <div class="row">
@@ -200,5 +200,8 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div>     
+</div>
+<div class="container" ng-if="!queryResult">
+    <h1>This is not the Query you are looking for</h1>
 </div>
