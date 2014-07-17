@@ -34,17 +34,21 @@
           $scope.$watch('dashboard.widgets && dashboard.widgets.length', function(widgets_length) {
             $timeout(function() {
               gridster.remove_all_widgets();
-
+              
               if ($scope.dashboard.widgets && $scope.dashboard.widgets.length) {
                 var layout = [];
-
+                var i = 1;
+                console.log($scope.dashboard.widgets.length);
                 _.each($scope.dashboard.widgets, function(row, rowIndex) {
-
+                  console.log(i)
+                  
                   $scope.permMessage = true;
 
                   _.each(row, function(widget, colIndex) {
 
 
+
+                    
                     if (widget != null) {
                       layout.push({
                         id: widget.id,
@@ -55,7 +59,11 @@
                         name: widget.getName()//visualization.query.name
                       });
                     } else {
-                      if ($scope.widgetPerm == true) {
+                      i += 1
+                      if (i == $scope.dashboard.widgets.length) {
+                        $scope.allWidgetPerm = false
+                      }
+                      else if ($scope.widgetPerm == true) {
                         $scope.widgetPerm = false
                       }
                     }
