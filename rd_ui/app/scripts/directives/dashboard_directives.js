@@ -39,7 +39,12 @@
                 var layout = [];
 
                 _.each($scope.dashboard.widgets, function(row, rowIndex) {
+
+                  $scope.permMessage = true;
+
                   _.each(row, function(widget, colIndex) {
+
+
                     if (widget != null) {
                       layout.push({
                         id: widget.id,
@@ -49,7 +54,13 @@
                         xSize: widget.width,
                         name: widget.getName()//visualization.query.name
                       });
+                    } else {
+                      if ($scope.widgetPerm == true) {
+                        $scope.widgetPerm = false
+                      }
                     }
+
+
                   });
                 });
 

@@ -108,6 +108,7 @@
     };
 
     if ($scope.widget != null) {
+      
       Events.record(currentUser, "view", "widget", $scope.widget.id);
 
       if ($scope.widget.visualization) {
@@ -122,6 +123,7 @@
       } else {
         $scope.type = 'textbox';
       }
+
     }
   };
 
