@@ -227,6 +227,21 @@ class Query(BaseModel):
 
         b3 = [val for val in metadata.used_tables if val in current_user.allowed_tables]
 
+        d = {
+            'id': None,
+            'latest_query_data_id': '',
+            'name': '',
+            'description': '',
+            'query': '',
+            'query_tables': '',
+            'query_hash': '',
+            'ttl': '',
+            'api_key': '',
+            'is_archived': '',
+            'created_at': '',
+            'data_source_id': ''
+        }
+
         if not current_user and not len(b3) == len(metadata.used_tables) and '*' not in current_user.allowed_tables:
             return {
                 'error': 'Access denied for table(s): %s' % (result)

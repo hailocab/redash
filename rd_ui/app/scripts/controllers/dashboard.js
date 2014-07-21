@@ -117,6 +117,7 @@
 
         $scope.query = $scope.widget.getQuery();
         $scope.queryResult = $scope.query.getQueryResult();
+        console.log('hello there');
         $scope.nextUpdateTime = moment(new Date(($scope.query.updated_at + $scope.query.ttl + $scope.query.runtime + 300) * 1000)).fromNow();
 
         $scope.type = 'visualization';
