@@ -1,6 +1,6 @@
 (function() {
   var DashboardCtrl = function($scope, Events, Widget, $routeParams, $http, $timeout, Dashboard) {
-    Events.record(currentUser, "view", "dashboard", dashboard.id);
+    Events.record(currentUser, "view", "dashboard", dashboard.id);    
 
     $scope.refreshEnabled = false;
     $scope.refreshRate = 60;
@@ -123,9 +123,15 @@
         Events.record(currentUser, "view", "query", $scope.widget.visualization.query.id);
         Events.record(currentUser, "view", "visualization", $scope.widget.visualization.id);
 
+
         $scope.query = $scope.widget.getQuery();
         $scope.queryResult = $scope.query.getQueryResult();        
         $scope.nextUpdateTime = moment(new Date(($scope.query.updated_at + $scope.query.ttl + $scope.query.runtime + 300) * 1000)).fromNow();
+
+    if ($scope.widget != null && $scope.widget.visualization) {
+      Events.record(currentUser, "view", "query", $scope.widget.visualization.query.id);
+      Events.record(currentUser, "view", "visualization", $scope.widget.visualization.id);
+
 
         $scope.type = 'visualization';
       } else {
