@@ -42,7 +42,7 @@
       filterQueries();
     });    
 
-    if (this.error != null) {
+     if (this.error == null) {
 
     $scope.gridColumns = [
       {
@@ -97,7 +97,7 @@
         }
       }
     ] 
-  }
+   }
     $scope.tabs = [
       {"name": "My Queries", "key": "my"},
       {"key": "all", "name": "All Queries"},
