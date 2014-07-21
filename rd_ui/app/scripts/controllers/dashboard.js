@@ -115,7 +115,7 @@
       });
     };
 
-    if ($scope.widget != null) {
+    if ($scope.widget != null && $scope.widget.visualization) {
       
       Events.record(currentUser, "view", "widget", $scope.widget.id);
 
@@ -128,9 +128,7 @@
         $scope.queryResult = $scope.query.getQueryResult();        
         $scope.nextUpdateTime = moment(new Date(($scope.query.updated_at + $scope.query.ttl + $scope.query.runtime + 300) * 1000)).fromNow();
 
-    if ($scope.widget != null && $scope.widget.visualization) {
-      Events.record(currentUser, "view", "query", $scope.widget.visualization.query.id);
-      Events.record(currentUser, "view", "visualization", $scope.widget.visualization.id);
+  
 
 
         $scope.type = 'visualization';
@@ -140,6 +138,7 @@
 
     }
   };
+
 
   angular.module('redash.controllers')
     .controller('DashboardCtrl', ['$scope', 'Events', 'Widget', '$routeParams', '$http', '$timeout', 'Dashboard', DashboardCtrl])

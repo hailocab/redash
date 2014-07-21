@@ -261,7 +261,7 @@ class Query(BaseModel):
             'data_source_id': ''
         }
 
-        if True:#not current_user and not len(b3) == len(metadata.used_tables) and '*' not in current_user.allowed_tables:
+        if not current_user and not len(b3) == len(metadata.used_tables) and '*' not in current_user.allowed_tables:
             return {
                 'error': 'Access denied for table(s): %s' % (result)
             }
