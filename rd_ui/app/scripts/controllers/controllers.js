@@ -43,6 +43,8 @@
     });    
 
      if (this.error == null) {
+      $scope.widgetPerm = true
+      $scope.allWidgetPerm = true
 
     $scope.gridColumns = [
       {

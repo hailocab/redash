@@ -36,39 +36,27 @@
               gridster.remove_all_widgets();
               
               if ($scope.dashboard.widgets && $scope.dashboard.widgets.length) {
+                
                 var layout = [];
-                var i = 1;
-                console.log($scope.dashboard.widgets.length);
-                _.each($scope.dashboard.widgets, function(row, rowIndex) {
-                  console.log(i)
+                var i = 0;    
+
+                _.each($scope.dashboard.widgets, function(row, rowIndex) {                  
                   
                   $scope.permMessage = true;
 
                   _.each(row, function(widget, colIndex) {
 
-
-
-                    
-                    if (widget != null) {
+                    if (widget != null && widget.id != null) {
+                      
                       layout.push({
                         id: widget.id,
                         col: colIndex + 1,
                         row: rowIndex + 1,
                         ySize: 1,
                         xSize: widget.width,
-                        name: widget.getName()//visualization.query.name
+                        name: widget.getName()
                       });
-                    } else {
-                      i += 1
-                      if (i == $scope.dashboard.widgets.length) {
-                        $scope.allWidgetPerm = false
-                      }
-                      else if ($scope.widgetPerm == true) {
-                        $scope.widgetPerm = false
-                      }
                     }
-
-
                   });
                 });
 

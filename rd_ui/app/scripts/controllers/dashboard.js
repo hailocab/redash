@@ -11,8 +11,9 @@
       $scope.dashboard.widgets = _.map($scope.dashboard.widgets, function (row) {
         return _.map(row, function (widget) {
           var w = new Widget(widget);
+          var i = 0;
 
-          if (w.visualization && dashboard.dashboard_filters_enabled) {
+          if (w.visualization && dashboard.dashboard_filters_enabled) {            
             var queryFilters = w.getQuery().getQueryResult().getFilters();
             _.each(queryFilters, function (filter) {
               if (!_.has(filters, filter.name)) {
@@ -25,7 +26,6 @@
                     originFilter.current = value;
                   })
                 });
-
               };
 
               // TODO: merge values.
@@ -38,6 +38,14 @@
           }
 
           else {
+            i += 1;
+           
+            if(i == dashboard.widgets.length) {
+              $scope.dashboard.allWidgetPerm = true
+            }
+            else if($scope.dashboard.widgetPerm = false) {
+           $scope.dashboard.hasQueryError = true          
+           }         
             return null;
           }          
         });
@@ -116,8 +124,7 @@
         Events.record(currentUser, "view", "visualization", $scope.widget.visualization.id);
 
         $scope.query = $scope.widget.getQuery();
-        $scope.queryResult = $scope.query.getQueryResult();
-        console.log('hello there');
+        $scope.queryResult = $scope.query.getQueryResult();        
         $scope.nextUpdateTime = moment(new Date(($scope.query.updated_at + $scope.query.ttl + $scope.query.runtime + 300) * 1000)).fromNow();
 
         $scope.type = 'visualization';

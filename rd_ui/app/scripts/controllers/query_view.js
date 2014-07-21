@@ -4,8 +4,7 @@
   function QueryViewCtrl($scope, Events, $route, $location, notifications, growl, Query, DataSource) {
     var DEFAULT_TAB = 'table';
 
-    $scope.query = $route.current.locals.query;
-    console.log($scope.query.id);
+    $scope.query = $route.current.locals.query;    
     if($scope.query.id != null) {
 
 

@@ -77,7 +77,7 @@ angular.module('redash', [
       $routeProvider.when('/', {
         templateUrl: '/views/index.html',
         controller: 'IndexCtrl'
-      });
+      });      
       $routeProvider.otherwise({
         redirectTo: '/'
       });
