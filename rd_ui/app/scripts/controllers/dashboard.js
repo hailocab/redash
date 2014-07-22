@@ -6,12 +6,13 @@
     $scope.refreshRate = 60;
     $scope.dashboard = Dashboard.get({ slug: $routeParams.dashboardSlug }, function (dashboard) {
       $scope.$parent.pageTitle = dashboard.name;
-      var filters = {};
+      var filters = {};      
+      var i = 0;
 
       $scope.dashboard.widgets = _.map($scope.dashboard.widgets, function (row) {
+
         return _.map(row, function (widget) {
-          var w = new Widget(widget);
-          var i = 0;
+          var w = new Widget(widget);         
 
           if (w.visualization && dashboard.dashboard_filters_enabled) {            
             var queryFilters = w.getQuery().getQueryResult().getFilters();
@@ -33,18 +34,18 @@
             });
           }
 
-          if (w.visualization.query.error == null) {                 
+          if (w.visualization.query.error == null) {          
+          i =- 1              
           return w;         
+          
           }
-
           else {
-            i += 1;
-           
+            i += 1;          
             if(i == dashboard.widgets.length) {
-              $scope.dashboard.allWidgetPerm = true
+              $scope.dashboard.allWidgetPerm = true            
             }
-            else if($scope.dashboard.widgetPerm = false) {
-           $scope.dashboard.hasQueryError = true          
+            else if ($scope.dashboard.widgetPerm != true){               
+              $scope.dashboard.widgetPerm = true                               
            }         
             return null;
           }          

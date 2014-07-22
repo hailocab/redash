@@ -225,6 +225,7 @@ class Query(BaseModel):
     user = peewee.ForeignKeyField(User)
     created_at = peewee.DateTimeField(default=datetime.datetime.now)
     
+    
 
 
     class Meta:
@@ -237,12 +238,13 @@ class Query(BaseModel):
         table_visualization.save()
 
 
-    def to_dict(self, with_result=True, with_stats=False, with_visualizations=False, with_user=True):     
-
+    def to_dict(self, with_result=True, with_stats=False, with_visualizations=False, with_user=True):
         metadata = utils.SQLMetaData(self.query)  
         result = [];
         for t in metadata.used_tables:
             result.append(t)
+
+        
 
         b3 = [val for val in metadata.used_tables if val in current_user.allowed_tables]
 
@@ -279,6 +281,11 @@ class Query(BaseModel):
             'created_at': self.created_at,
             'data_source_id': self._data.get('data_source', None)
         }
+
+        # if 2 in d.itervalues():
+        #     return {
+        #         'error': 'HELLO'
+        #     }
 
         if with_user:
             d['user'] = self.user.to_dict()

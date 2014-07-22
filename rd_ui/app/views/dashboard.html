@@ -1,6 +1,6 @@
 <new-widget-form dashboard="dashboard"></new-widget-form>
 <edit-dashboard-form dashboard="dashboard" id="edit_dashboard_dialog"></edit-dashboard-form>
-<div class="container" ng-if="widgetPerm">
+<div class="container" ng-if="dashboard.widgetPerm == true && dashboard.allWidgetPerm != true" >
     <div class="alert alert-warning" role="alert">You do not have permission to view all widget(s) on this page</div>
 </div>
 <div class="container" ng-if="dashboard.allWidgetPerm == true">    
