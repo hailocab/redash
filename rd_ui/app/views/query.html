@@ -144,7 +144,7 @@
                     Are you sure you want to delete the query?
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">No</button>
+                    <button type="button" class="btn btn-default"  data-dismiss="modal">No</button>
                     <button type="button" class="btn btn-primary" ng-click="deleteQuery()">Yes, delete!</button>
                 </div>
             </div>
@@ -162,11 +162,11 @@
     </div>
     <div class="modal-body">
         Choose a name for the forked query <br />
-        <input editable="isQueryOwner" done="saveName" ignore-blanks='true'></input>
+        <input editable="isQueryOwner" done="saveName" ng-model="forkName" id="forkName" type="text" ignore-blanks='true'></input>
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id='spiderpig' ng-click="duplicateQuery()">Create fork</button>
+        <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="duplicateQuery(forkName)">Create fork</button>
 
     </div>
 

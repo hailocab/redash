@@ -51,20 +51,24 @@
       return savePromise;
     };
 
-    $scope.duplicateQuery = function() {
+    $scope.duplicateQuery = function(name) {
       Events.record(currentUser, 'fork', 'query', $scope.query.id);
       $scope.query.id = null;
       $scope.query.ttl = -1;
       $scope.query.is_archived = 'f';
-      $scope.query.name = spiderpig;
+      $scope.query.name = name;
+      
 
       $scope.saveQuery({
         successMessage: 'Query forked',
         errorMessage: 'Query could not be forked'
       }).then(function redirect(savedQuery) {
         // redirect to forked query (clear hash)
-        $location.url(savedQuery.getSourceLink()).replace()
+        var x = $location.url(savedQuery.getSourceLink())
+        x.replace()
       });
+
+
     };
 
     $scope.deleteVisualization = function($e, vis) {
