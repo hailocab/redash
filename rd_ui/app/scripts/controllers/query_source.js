@@ -55,6 +55,8 @@
       Events.record(currentUser, 'fork', 'query', $scope.query.id);
       $scope.query.id = null;
       $scope.query.ttl = -1;
+      $scope.query.is_archived = 'f';
+      $scope.query.name = spiderpig;
 
       $scope.saveQuery({
         successMessage: 'Query forked',

@@ -220,6 +220,7 @@ class Query(BaseModel):
     user_email = peewee.CharField(max_length=360, null=True)
     user = peewee.ForeignKeyField(User)
     created_at = peewee.DateTimeField(default=datetime.datetime.now)
+    is_archived = peewee.CharField(max_length=1)
 
     class Meta:
         db_table = 'queries'

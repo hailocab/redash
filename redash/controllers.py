@@ -415,10 +415,13 @@ class QueryListAPI(BaseResource):
 
 class QueryAPI(BaseResource):
     @require_permission('edit_query')
-    def post(self, query_id):
+    def post(self, query_id):      
         query_def = request.get_json(force=True)
         for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'user']:
             query_def.pop(field, None)
+       
+
+
 
         if 'latest_query_data_id' in query_def:
             query_def['latest_query_data'] = query_def.pop('latest_query_data_id')
@@ -433,7 +436,7 @@ class QueryAPI(BaseResource):
         return query.to_dict(with_result=False, with_visualizations=True)
 
     @require_permission('view_query')
-    def get(self, query_id):
+    def get(self, query_id):        
         q = models.Query.get(models.Query.id == query_id)
         if q:
             return q.to_dict(with_visualizations=True)
