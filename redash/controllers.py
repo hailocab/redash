@@ -19,13 +19,13 @@ from flask_login import current_user, login_user, logout_user
 import sqlparse
 import events
 from permissions import require_permission
-from redash import settings, utils, __version__, statsd_client
-from redash import data
 
-from redash import app, auth, api, redis_connection, data_manager
-from redash import models
+from redash import redis_connection, statsd_client, models, settings, utils, __version__
+from redash.wsgi import app, auth, api
 
 import logging
+from tasks import QueryTask
+
 
 @app.route('/ping', methods=['GET'])
 def ping():
@@ -55,7 +55,8 @@ def index(**kwargs):
     }
 
     features = {
-        'clientSideMetrics': settings.CLIENT_SIDE_METRICS
+        'clientSideMetrics': settings.CLIENT_SIDE_METRICS,
+        'flowerUrl': settings.CELERY_FLOWER_URL
     }
 
     return render_template("index.html", user=json.dumps(user), name=settings.NAME,
@@ -117,12 +118,25 @@ def status_api():
     status['dashboards_count'] = models.Dashboard.select().count()
     status['widgets_count'] = models.Widget.select().count()
 
-    status['workers'] = [redis_connection.hgetall(w)
-                         for w in redis_connection.smembers('workers')]
+    status['workers'] = []
 
-    manager_status = redis_connection.hgetall('manager:status')
+    manager_status = redis_connection.hgetall('redash:status')
     status['manager'] = manager_status
-    status['manager']['queue_size'] = redis_connection.zcard('jobs')
+    status['manager']['queue_size'] = redis_connection.llen('queries') + redis_connection.llen('scheduled_queries')
+    status['manager']['outdated_queries_count'] = models.Query.outdated_queries().count()
+
+    queues = {}
+    for ds in models.DataSource.select():
+        for queue in (ds.queue_name, ds.scheduled_queue_name):
+            queues.setdefault(queue, set())
+            queues[queue].add(ds.name)
+
+    status['manager']['queues'] = {}
+    for queue, sources in queues.iteritems():
+        status['manager']['queues'][queue] = {
+            'data_sources': ', '.join(sources),
+            'size': redis_connection.llen(queue)
+        }
 
     return jsonify(status)
 
@@ -464,6 +478,7 @@ class VisualizationAPI(BaseResource):
         if 'options' in kwargs:
             kwargs['options'] = json.dumps(kwargs['options'])
         kwargs.pop('id', None)
+        kwargs.pop('query_id', None)
 
         update = models.Visualization.update(**kwargs).where(models.Visualization.id == visualization_id)
         update.execute()
@@ -519,7 +534,7 @@ class QueryResultListAPI(BaseResource):
             return {'query_result': query_result.to_dict()}
         else:
             data_source = models.DataSource.get_by_id(params['data_source_id'])
-            job = data_manager.add_job(params['query'], data.Job.HIGH_PRIORITY, data_source)
+            job = QueryTask.add_task(params['query'], data_source)
             return {'job': job.to_dict()}
 
 
@@ -570,11 +585,11 @@ api.add_resource(QueryResultAPI, '/api/query_results/<query_result_id>', endpoin
 class JobAPI(BaseResource):
     def get(self, job_id):
         # TODO: if finished, include the query result
-        job = data.Job.load(data_manager.redis_connection, job_id)
+        job = QueryTask(job_id=job_id)
         return {'job': job.to_dict()}
 
     def delete(self, job_id):
-        job = data.Job.load(data_manager.redis_connection, job_id)
+        job = QueryTask(job_id=job_id)
         job.cancel()
 
 api.add_resource(JobAPI, '/api/jobs/<job_id>', endpoint='job')

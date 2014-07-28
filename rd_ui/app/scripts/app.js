@@ -106,6 +106,10 @@ angular.module('redash', [
         templateUrl: '/views/admin_form.html',
         controller: 'AdminGroupFormCtrl'
       });
+      $routeProvider.when('/admin/workers', {
+        templateUrl: '/views/admin_workers.html',
+        controller: 'AdminWorkersCtrl'
+      });
       $routeProvider.when('/', {
         templateUrl: '/views/index.html',
         controller: 'IndexCtrl'

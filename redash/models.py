@@ -1,17 +1,60 @@
 import json
 import hashlib
+import logging
+import os
+import threading
 import time
 import datetime
-from flask.ext.peewee.utils import slugify
-from flask.ext.login import UserMixin, AnonymousUserMixin
 import itertools
-from passlib.apps import custom_app_context as pwd_context
+
 import peewee
+from passlib.apps import custom_app_context as pwd_context
 from playhouse.postgres_ext import ArrayField
-from redash import db, utils
+from flask.ext.login import UserMixin, AnonymousUserMixin
+
+from redash import utils, settings
 
 
-class BaseModel(db.Model):
+class Database(object):
+    def __init__(self):
+        self.database_config = dict(settings.DATABASE_CONFIG)
+        self.database_name = self.database_config.pop('name')
+        self.database = peewee.PostgresqlDatabase(self.database_name, **self.database_config)
+        self.app = None
+        self.pid = os.getpid()
+
+    def init_app(self, app):
+        self.app = app
+        self.register_handlers()
+
+    def connect_db(self):
+        self._check_pid()
+        self.database.connect()
+
+    def close_db(self, exc):
+        self._check_pid()
+        if not self.database.is_closed():
+            self.database.close()
+
+    def _check_pid(self):
+        current_pid = os.getpid()
+        if self.pid != current_pid:
+            logging.info("New pid detected (%d!=%d); resetting database lock.", self.pid, current_pid)
+            self.pid = os.getpid()
+            self.database._conn_lock = threading.Lock()
+
+    def register_handlers(self):
+        self.app.before_request(self.connect_db)
+        self.app.teardown_request(self.close_db)
+
+
+db = Database()
+
+
+class BaseModel(peewee.Model):
+    class Meta:
+        database = db.database
+
     @classmethod
     def get_by_id(cls, model_id):
         return cls.get(cls.id == model_id)
@@ -70,11 +113,13 @@ class Group(BaseModel):
 
 
 class User(BaseModel, UserMixin):
+    DEFAULT_GROUPS = ['default','default-non-jss']
+
     id = peewee.PrimaryKeyField()
     name = peewee.CharField(max_length=320)
     email = peewee.CharField(max_length=320, index=True, unique=True)
     password_hash = peewee.CharField(max_length=128, null=True)
-    groups = ArrayField(peewee.CharField, default=['default'])
+    groups = ArrayField(peewee.CharField, default=DEFAULT_GROUPS)
 
     class Meta:
         db_table = 'users'
@@ -140,11 +185,14 @@ class ActivityLog(BaseModel):
     def __unicode__(self):
         return unicode(self.id)
 
+
 class DataSource(BaseModel):
     id = peewee.PrimaryKeyField()
     name = peewee.CharField()
     type = peewee.CharField()
     options = peewee.TextField()
+    queue_name = peewee.CharField(default="queries")
+    scheduled_queue_name = peewee.CharField(default="queries")
     created_at = peewee.DateTimeField(default=datetime.datetime.now)
 
     class Meta:
@@ -202,6 +250,25 @@ class QueryResult(BaseModel):
                                                   ttl)).order_by(cls.retrieved_at.desc())
 
         return query.first()
+
+    @classmethod
+    def store_result(cls, data_source_id, query_hash, query, data, run_time, retrieved_at):
+        query_result = cls.create(query_hash=query_hash,
+                                  query=query,
+                                  runtime=run_time,
+                                  data_source=data_source_id,
+                                  retrieved_at=retrieved_at,
+                                  data=data)
+
+        logging.info("Inserted query (%s) data; id=%s", query_hash, query_result.id)
+
+        updated_count = Query.update(latest_query_data=query_result).\
+            where(Query.query_hash==query_hash, Query.data_source==data_source_id).\
+            execute()
+
+        logging.info("Updated %s queries with result (%s).", updated_count, query_hash)
+
+        return query_result
 
     def __unicode__(self):
         return u"%d | %s | %s" % (self.id, self.query_hash, self.retrieved_at)
@@ -278,6 +345,23 @@ class Query(BaseModel):
             .group_by(Query.id, User.id)
 
         return q
+
+    @classmethod
+    def outdated_queries(cls):
+        # TODO: this will only find scheduled queries that were executed before. I think this is
+        # a reasonable assumption, but worth revisiting.
+        outdated_queries_ids = cls.select(
+            peewee.Func('first_value', cls.id).over(partition_by=[cls.query_hash, cls.data_source])) \
+            .join(QueryResult) \
+            .where(cls.ttl > 0,
+                   (QueryResult.retrieved_at +
+                    (cls.ttl * peewee.SQL("interval '1 second'"))) <
+                   peewee.SQL("(now() at time zone 'utc')"))
+
+        queries = cls.select(cls, DataSource).join(DataSource) \
+            .where(cls.id << outdated_queries_ids)
+
+        return queries
 
     @classmethod
     def update_instance(cls, query_id, **kwargs):
@@ -363,11 +447,11 @@ class Dashboard(BaseModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = utils.slugify(self.name)
 
             tries = 1
             while self.select().where(Dashboard.slug == self.slug).first() is not None:
-                self.slug = slugify(self.name) + "_{0}".format(tries)
+                self.slug = utils.slugify(self.name) + "_{0}".format(tries)
                 tries += 1
 
         super(Dashboard, self).save(*args, **kwargs)
@@ -438,7 +522,24 @@ class Widget(BaseModel):
     def __unicode__(self):
         return u"%s" % self.id
 
-all_models = (DataSource, User, QueryResult, Query, Dashboard, Visualization, Widget, ActivityLog, Group)
+
+class Event(BaseModel):
+    # user, action, object_type, object_id, additional_properties
+    user = peewee.ForeignKeyField(User, related_name="events")
+    action = peewee.CharField()
+    object_type = peewee.CharField()
+    object_id = peewee.IntegerField()
+    additional_properties = peewee.TextField(null=True)
+    created_at = peewee.DateTimeField(default=datetime.datetime.now)
+
+    class Meta:
+        db_table = 'events'
+
+    def __unicode__(self):
+        return u"%s,%s,%s,%s" % (self._data['user'], self.action, self.object_type, self.object_id)
+
+
+all_models = (DataSource, User, QueryResult, Query, Dashboard, Visualization, Widget, ActivityLog, Group, Event)
 
 
 def init_db():

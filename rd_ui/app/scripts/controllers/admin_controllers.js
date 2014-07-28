@@ -16,6 +16,8 @@
       $timeout(refresh, 59 * 1000);
     };
 
+    $scope.flowerUrl = featureFlags.flowerUrl;
+
     refresh();
   }
   var AdminViewUserCtrl = function ($location, $scope, $routeParams, Events, Users, User, Groups) {    
@@ -525,6 +527,10 @@ var AdminViewGroupCtrl = function ($location, $scope, $routeParams, Events, Grou
     });
   }
 
+  var AdminWorkersCtrl = function ($scope, $sce) {
+    $scope.flowerUrl = $sce.trustAsResourceUrl(featureFlags.flowerUrl);
+  };
+
   angular.module('redash.admin_controllers', [])
   .controller('AdminStatusCtrl', ['$scope', 'Events', '$http', '$timeout', AdminStatusCtrl])
   .controller('AdminUsersCtrl', ['$scope', 'Events', 'Users', AdminUsersCtrl])
@@ -533,15 +539,5 @@ var AdminViewGroupCtrl = function ($location, $scope, $routeParams, Events, Grou
   .controller('AdminUserFormCtrl', ['$location', '$scope', '$routeParams', 'Events', 'Users','User', 'Groups', AdminUserFormCtrl])
   .controller('AdminViewGroupCtrl', ['$location', '$scope', '$routeParams', 'Events', 'Groups','Group', 'Table', AdminViewGroupCtrl])
   .controller('AdminViewUserCtrl', ['$location', '$scope', '$routeParams', 'Events', 'Users','User', 'Groups', AdminViewUserCtrl])  
-         // .directive('applystyle', function() {
-         //    return {
-         //        // Restrict it to be an attribute in this case
-         //        restrict: 'A',
-         //        // responsible for registering DOM listeners as well as updating the DOM
-         //        link: function(scope, element, attrs) {
-         //          $('#select2-choices').class('form-control');
-         //        }
-         //    };
-         //  });
-
+  .controller('AdminWorkersCtrl', ['$scope', '$sce', AdminWorkersCtrl])
 })();

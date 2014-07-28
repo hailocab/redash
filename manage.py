@@ -2,12 +2,12 @@
 """
 CLI to manage redash.
 """
-import signal
-import logging
-import time
-from redash import settings, app, db, models, data_manager, __version__
-from redash.import_export import import_manager
+import datetime
 from flask.ext.script import Manager, prompt_pass
+
+from redash import settings, models, __version__
+from redash.wsgi import app
+from redash.import_export import import_manager
 
 manager = Manager(app)
 database_manager = Manager(help="Manages the database (create/drop tables).")
@@ -22,36 +22,13 @@ def version():
 
 @manager.command
 def runworkers():
-    """Starts the re:dash query executors/workers."""
-
-    def stop_handler(signum, frame):
-        logging.warning("Exiting; waiting for workers")
-        data_manager.stop_workers()
-        exit()
-
-    signal.signal(signal.SIGTERM, stop_handler)
-    signal.signal(signal.SIGINT, stop_handler)
-
-    old_workers = data_manager.redis_connection.smembers('workers')
-    data_manager.redis_connection.delete('workers')
-
-    logging.info("Cleaning old workers: %s", old_workers)
-
-    data_manager.start_workers(settings.WORKERS_COUNT)
-    logging.info("Workers started.")
-
-    while True:
-        try:
-            data_manager.refresh_queries()
-            data_manager.report_status()
-        except Exception as e:
-            logging.error("Something went wrong with refreshing queries...")
-            logging.exception(e)
-        time.sleep(60)
+    """Prints deprecation warning."""
+    print "** This command is deprecated. Please use Celery's CLI to control the workers. **"
 
 
 @manager.shell
 def make_shell_context():
+    from redash.models import db
     return dict(app=app, db=db, models=models)
 
 @manager.command
@@ -62,6 +39,36 @@ def check_settings():
         item = getattr(settings, name)
         if not callable(item) and not name.startswith("__") and not isinstance(item, ModuleType):
             print "{} = {}".format(name, item)
+
+@manager.command
+def import_events(events_file):
+    import json
+
+    count = 0
+    with open(events_file) as f:
+        for line in f:
+            try:
+                event = json.loads(line)
+
+                user = event.pop('user_id')
+                action = event.pop('action')
+                object_type = event.pop('object_type')
+                object_id = event.pop('object_id')
+                created_at = datetime.datetime.utcfromtimestamp(event.pop('timestamp'))
+                additional_properties = json.dumps(event)
+
+                models.Event.create(user=user, action=action, object_type=object_type, object_id=object_id,
+                                    additional_properties=additional_properties, created_at=created_at)
+
+                count += 1
+
+            except Exception as ex:
+                print "Failed importing line:"
+                print line
+                print ex.message
+
+    print "Importe %d rows" % count
+
 
 @database_manager.command
 def create_tables():
@@ -84,7 +91,7 @@ def drop_tables():
 @users_manager.option('--admin', dest='is_admin', action="store_true", default=False, help="set user as admin")
 @users_manager.option('--google', dest='google_auth', action="store_true", default=False, help="user uses Google Auth to login")
 @users_manager.option('--password', dest='password', default=None, help="Password for users who don't use Google Auth (leave blank for prompt).")
-@users_manager.option('--groups', dest='groups', default=models.Group.DEFAULT_PERMISSIONS, help="Comma seperated list of groups (leave blank for default).")
+@users_manager.option('--groups', dest='groups', default=models.User.DEFAULT_GROUPS, help="Comma seperated list of groups (leave blank for default).")
 def create(email, name, groups, is_admin=False, google_auth=False, password=None):
     print "Creating user (%s, %s)..." % (email, name)
     print "Admin: %r" % is_admin

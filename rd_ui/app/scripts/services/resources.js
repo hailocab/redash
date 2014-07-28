@@ -10,13 +10,28 @@
         this.filters = undefined;
         this.filterFreeze = undefined;
 
+        var columnTypes = {};
+
         _.each(this.query_result.data.rows, function (row) {
           _.each(row, function (v, k) {
-            if (_.isString(v) && v.match(/^\d{4}-\d{2}-\d{2}/)) {
+            if (angular.isNumber(v)) {
+              columnTypes[k] = 'float';
+            } else if (_.isString(v) && v.match(/^\d{4}-\d{2}-\d{2}T/)) {
               row[k] = moment(v);
+              columnTypes[k] = 'datetime';
+            } else if (_.isString(v) && v.match(/^\d{4}-\d{2}-\d{2}/)) {
+              row[k] = moment(v);
+              columnTypes[k] = 'date';
             }
-          });
+          }, this);
+        }, this);
+
+        _.each(this.query_result.data.columns, function(column) {
+          if (columnTypes[column.name]) {
+            column.type = columnTypes[column.name];
+          }
         });
+
       } else if (this.job.status == 3) {
         this.status = "processing";
       } else {
@@ -133,7 +148,7 @@
       return this.filteredData;
     }
 
-    QueryResult.prototype.getChartData = function () {
+    QueryResult.prototype.getChartData = function (mapping) {
       var series = {};
 
       _.each(this.getData(), function (row) {
@@ -143,8 +158,15 @@
         var yValues = {};
 
         _.each(row, function (value, definition) {
-          var type = definition.split("::")[1];
           var name = definition.split("::")[0];
+          var type = definition.split("::")[1];
+          if (mapping) {
+            type = mapping[definition];
+          }
+
+          if (type == 'unused') {
+            return;
+          }
 
           if (type == 'x') {
             xValue = value;
@@ -215,6 +237,9 @@
 
     QueryResult.prototype.getColumnNameWithoutType = function (column) {
       var parts = column.split('::');
+      if (parts[0] == "" && parts.length == 2) {
+        return parts[1];
+      }
       return parts[0];
     };
 
@@ -224,7 +249,9 @@
       '__qm': /\?/g,
       '__brkt': /[\(\)\[\]]/g,
       '__dash': /-/g,
-      '__amp': /&/g
+      '__amp': /&/g,
+      '__sl': /\//g,
+      '__fsl': /\\/g,
     };
 
     QueryResult.prototype.getColumnCleanName = function (column) {
@@ -369,9 +396,9 @@
         }
         queryResult = this.queryResult;
       } else if (this.latest_query_data_id && ttl != 0) {
-        queryResult = QueryResult.getById(this.latest_query_data_id);
+        this.queryResult = queryResult = QueryResult.getById(this.latest_query_data_id);
       } else if (this.data_source_id) {
-        queryResult = QueryResult.get(this.data_source_id, this.query, ttl);
+        this.queryResult = queryResult = QueryResult.get(this.data_source_id, this.query, ttl);
       }
 
       return queryResult;

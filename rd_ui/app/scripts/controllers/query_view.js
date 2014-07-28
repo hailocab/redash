@@ -24,7 +24,7 @@
       if (data) {
         data.id = $scope.query.id;
       } else {
-        data = $scope.query;
+        data = _.clone($scope.query);
       }
 
       options = _.extend({}, {
@@ -32,8 +32,8 @@
         errorMessage: 'Query could not be saved'
       }, options);
 
-      delete $scope.query.latest_query_data;
-      delete $scope.query.queryResult;
+      delete data.latest_query_data;
+      delete data.queryResult;
 
       return Query.save(data, function() {
         growl.addSuccessMessage(options.successMessage);
@@ -90,13 +90,17 @@
 
     $scope.updateDataSource = function() {
       Events.record(currentUser, 'update_data_source', 'query', $scope.query.id);
+
       $scope.query.latest_query_data = null;
       $scope.query.latest_query_data_id = null;
-      Query.save({
+
+      if ($scope.query.id) {
+        Query.save({
           'id': $scope.query.id,
           'data_source_id': $scope.query.data_source_id,
           'latest_query_data_id': null
-      });
+        });
+      }
 
       $scope.executeQuery();
     };
@@ -126,19 +130,6 @@
       }
 
       $scope.filters = $scope.queryResult.getFilters();
-
-      if ($scope.queryResult.getId() == null) {
-        $scope.dataUri = "";
-      } else {
-        $scope.dataUri =
-          '/api/queries/' + $scope.query.id + '/results/' +
-          $scope.queryResult.getId() + '.csv';
-
-        $scope.dataFilename =
-          $scope.query.name.replace(" ", "_") +
-          moment($scope.queryResult.getUpdatedAt()).format("_YYYY_MM_DD") +
-          ".csv";
-      }
     });
 
     $scope.$watch("queryResult && queryResult.getStatus()", function(status) {

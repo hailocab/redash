@@ -13,11 +13,23 @@
     xAxis: {
       type: 'datetime'
     },
-    yAxis: {
-      title: {
-        text: null
+    yAxis: [
+      {
+        title: {
+          text: null
+        },
+        // showEmpty: true // by default
+      },
+      {
+        title: {
+          text: null
+        },
+        opposite: true,
+        showEmpty: false
       }
-    },
+    ],
+
+
     tooltip: {
       valueDecimals: 2,
       formatter: function () {
@@ -80,6 +92,45 @@
                 _.each(this.series, function (series) {
                   series.update({stacking: newStacking}, true);
                 });
+              }
+            },
+            {
+              text: 'Select All',
+              onclick: function () {
+                _.each(this.series, function (s) {
+                  s.setVisible(true, false);
+                });
+                this.redraw();
+              }
+            },
+            {
+              text: 'Unselect All',
+              onclick: function () {
+                _.each(this.series, function (s) {
+                  s.setVisible(false, false);
+                });
+                this.redraw();
+              }
+            },
+            {
+              text: 'Show Total',
+              onclick: function () {
+                var data = {};
+                _.each(this.series, function (s) {
+                  s.setVisible(false, false);
+                  _.each(s.data, function (p) {
+                    data[p.x] = data[p.x] || {'x': p.x, 'y': 0};
+                    data[p.x].y = data[p.x].y + p.y;
+                  });
+                });
+
+                this.addSeries({
+                  data: _.values(data),
+                  type: 'line',
+                  name: 'Total'
+                }, false)
+
+                this.redraw();
               }
             }
           ]

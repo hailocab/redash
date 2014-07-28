@@ -63,36 +63,32 @@
 
               var columnType = columns[i].type;
 
-              if (!columnType) {
-                var rawData = $scope.queryResult.getRawData();
-
-                if (rawData.length > 0) {
-                  var exampleData = rawData[0][col];
-                  if (angular.isNumber(exampleData)) {
-                    columnType = 'float';
-                  } else if (moment.isMoment(exampleData)) {
-                    if (exampleData._i.match(/^\d{4}-\d{2}-\d{2}T/)) {
-                      columnType = 'datetime';
-                    } else {
-                      columnType = 'date';
-                    }
-                  }
-                }
-              }
-
               if (columnType === 'integer') {
                 columnDefinition.formatFunction = 'number';
                 columnDefinition.formatParameter = 0;
               } else if (columnType === 'float') {
                 columnDefinition.formatFunction = 'number';
                 columnDefinition.formatParameter = 2;
+              } else if (columnType === 'boolean') {
+                columnDefinition.formatFunction = function (value) {
+                  if (value !== undefined) {
+                    return "" + value;
+                  }
+                  return value;
+                };
               } else if (columnType === 'date') {
                 columnDefinition.formatFunction = function (value) {
-                  return value.format("DD/MM/YY");
+                  if (value) {
+                    return value.format("DD/MM/YY");
+                  }
+                  return value;
                 };
               } else if (columnType === 'datetime') {
                 columnDefinition.formatFunction = function (value) {
-                  return value.format("DD/MM/YY HH:mm");
+                  if (value) {
+                    return value.format("DD/MM/YY HH:mm");
+                  }
+                  return value;
                 };
               } else {
                 columnDefinition.formatFunction = function (value) {

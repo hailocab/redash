@@ -5,13 +5,11 @@ import time
 import logging
 
 from flask import request, make_response, redirect, url_for
-from flask.ext.googleauth import GoogleAuth, login
 from flask.ext.login import LoginManager, login_user, current_user
+from flask.ext.googleauth import GoogleAuth, login
 from werkzeug.contrib.fixers import ProxyFix
 
-from models import AnonymousUser
 from redash import models, settings
-
 
 login_manager = LoginManager()
 logger = logging.getLogger('authentication')
@@ -78,7 +76,7 @@ def create_and_login_user(app, user):
             user_object.save()
     except models.User.DoesNotExist:
         logger.debug("Creating user object (%r)", user.name)
-        user_object = models.User.create(name=user.name, email=user.email, groups = ['default','default-non-jss'])
+        user_object = models.User.create(name=user.name, email=user.email, groups = models.User.DEFAULT_GROUPS)
 
     login_user(user_object, remember=True)
 
@@ -99,7 +97,7 @@ def setup_authentication(app):
             openid_auth._OPENID_ENDPOINT = "https://www.google.com/a/%s/o8/ud?be=o8" % settings.GOOGLE_APPS_DOMAIN
 
     login_manager.init_app(app)
-    login_manager.anonymous_user = AnonymousUser
+    login_manager.anonymous_user = models.AnonymousUser
     app.wsgi_app = ProxyFix(app.wsgi_app)
     app.secret_key = settings.COOKIE_SECRET
 
