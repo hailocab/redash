@@ -18,6 +18,7 @@ from flask_login import current_user, login_user, logout_user
 
 import sqlparse
 import events
+from flask_googlelogin import GoogleLogin
 from permissions import require_permission
 from redash import settings, utils, __version__, statsd_client
 from redash import data
@@ -40,6 +41,7 @@ def ping():
 @app.route('/queries/<query_id>')
 @app.route('/queries/<query_id>/<anything>')
 @app.route('/')
+
 @auth.required
 def index(**kwargs):
     email_md5 = hashlib.md5(current_user.email.lower()).hexdigest()
@@ -73,28 +75,8 @@ def index(**kwargs):
 
 # 	return render_template("admin_groups.html", )
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated():
-        return redirect(request.args.get('next') or '/')
 
-    if not settings.PASSWORD_LOGIN_ENABLED:
-        blueprint = app.extensions['googleauth'].blueprint
-        return redirect(url_for("%s.login" % blueprint.name, next=request.args.get('next')))
 
-    if request.method == 'POST':
-        user = models.User.select().where(models.User.email == request.form['username']).first()
-        if user and user.verify_password(request.form['password']):
-            remember = ('remember' in request.form)
-            login_user(user, remember=remember)
-            return redirect(request.args.get('next') or '/')
-
-    return render_template("login.html",
-                           name=settings.NAME,
-                           analytics=settings.ANALYTICS,
-                           next=request.args.get('next'),
-                           username=request.form.get('username', ''),
-                           show_google_openid=settings.GOOGLE_OPENID_ENABLED)
 
 
 @app.route('/logout')
