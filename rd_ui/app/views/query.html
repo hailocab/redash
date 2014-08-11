@@ -1,231 +1,206 @@
 
-<div class="container">
+    <div class="container">
 
-    <alert-unsaved-changes ng-if="canEdit" is-dirty="isDirty"></alert-unsaved-changes>
+        <alert-unsaved-changes ng-if="canEdit" is-dirty="isDirty"></alert-unsaved-changes>    
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="row">
+                    <div class="col-lg-10">
+                        <h2>
+                            <edit-in-place editable="isQueryOwner" done="saveName" ignore-blanks='true' value="query.name"></edit-in-place>
+                        </h2>
+                        <p>
+                            <em>
+                                <edit-in-place editable="isQueryOwner" done="saveDescription" editor="textarea" placeholder="No description" ignore-blanks='false' value="query.description"></edit-in-place>
+                            </em>
+                        </p>
+                    </div>
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="row">
-                <div class="col-lg-10">
-                    <h2>
-                        <edit-in-place editable="isQueryOwner" done="saveName" ignore-blanks='true' value="query.name"></edit-in-place>
-                    </h2>
-                    <p>
-                        <em>
-                            <edit-in-place editable="isQueryOwner" done="saveDescription" editor="textarea" placeholder="No description" ignore-blanks='false' value="query.description"></edit-in-place>
-                        </em>
-                    </p>
-                </div>
-
-                <div class="col-lg-2">
-                    <div class="rd-hidden-xs pull-right">
-                        <query-source-link></query-source-link>
+                    <div class="col-lg-2">
+                        <div class="rd-hidden-xs pull-right">
+                            <query-source-link></query-source-link>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="visible-xs">
-                <p>
-                    <span class="text-muted">Last update </span>
-                    <strong>
-                        <rd-time-ago value="queryResult.query_result.retrieved_at"></rd-time-ago>
-                    </strong>
-                    &nbsp;
-                    <span class="text-muted">Created By </span>
-                    <strong ng-hide="isQueryOwner">{{query.user.name}}</strong>
-                    <strong ng-show="isQueryOwner">You</strong>
-                    &nbsp;
-                    <span class="text-muted">Runtime </span>
-                    <strong ng-show="!queryExecuting">{{queryResult.getRuntime() | durationHumanize}}</strong>
-                    <span ng-show="queryExecuting">Running&hellip;</span>
-                    &nbsp;
-                    <span class="text-muted">Rows </span>
-                    <strong>{{queryResult.getData().length}}</strong>
-                </p>
-                <p>
-                    <query-source-link></query-source-link>
-                </p>
-            </div>
         </div>
-    </div>
-
-    <hr>
-
-    <div class="row">
-        <div class="col-lg-12">
-            <div ng-show="sourceMode">
-                <p>
-                    <button type="button" class="btn btn-primary btn-xs" ng-disabled="queryExecuting" ng-click="executeQuery()">
-                        <span class="glyphicon glyphicon-play"></span> Execute
-                    </button>
-                    <query-formatter></query-formatter>
-                    <span class="pull-right">
-                      <a class="btn btn-default btn-xs" ng-disabled="queryExecuting" data-toggle="modal" data-target="#new-fork-form">
-                        <span class="glyphicon glyphicon-share-alt"></span>
-                        <span class="rd-hidden-xs">Fork</span>
-                    </a>
-
-                    <button class="btn btn-success btn-xs" ng-show="canEdit" ng-click="saveQuery()">
-                        <span class="glyphicon glyphicon-floppy-disk"> </span> Save<span ng-show="isDirty">&#42;</span>
-                    </button>
-                </span>
-            </p>
-        </div>
-
-        <!-- code editor -->
-        <div ng-show="sourceMode">
-            <p>
-                <query-editor query="query" lock="queryExecuting"></query-editor>
-            </p>
-            <hr>
-        </div>
-    </div>
-
-</div>
-
-<div class="row">
-    <div class="col-lg-3 rd-hidden-xs">
-        <p>
-            <span class="glyphicon glyphicon-time"></span>
-            <span class="text-muted">Last update </span>
-            <strong>
-                <rd-time-ago value="queryResult.query_result.retrieved_at"></rd-time-ago>
-            </strong>
-        </p>
-        <p>
-            <span class="glyphicon glyphicon-user"></span>
-            <span class="text-muted">Created By </span>
-            <strong ng-hide="isQueryOwner">{{query.user.name}}</strong>
-            -                <strong ng-show="isQueryOwner">You</strong>
-        </p>
-        <p>
-            <span class="glyphicon glyphicon-play"></span>
-            <span class="text-muted">Runtime </span>
-            <strong ng-show="!queryExecuting">{{queryResult.getRuntime() | durationHumanize}}</strong>
-            <span ng-show="queryExecuting">Running&hellip;</span>
-        </p>
-        <p>
-            <span class="glyphicon glyphicon-align-justify"></span>
-            <span class="text-muted">Rows </span><strong>{{queryResult.getData().length}}</strong>
-        </p>
-        <p>
-            <span class="glyphicon glyphicon-refresh"></span>
-            <span class="text-muted">Refresh Interval</span>
-            <query-refresh-select></query-refresh-select>
-        </p>
-
-        <p>
-            <span class="glyphicon glyphicon-hdd"></span>
-            <span class="text-muted">Data Source</span>
-            <select ng-disabled="!isQueryOwner" ng-model="query.data_source_id" ng-change="updateDataSource()" ng-options="ds.id as ds.name for ds in dataSources"></select>
-        </p>
 
         <hr>
 
-        <p>
-            <a class="btn btn-primary btn-sm" ng-disabled="queryExecuting || !queryResult.getData()" ng-href="{{dataUri}}" download="{{dataFilename}}" target="_self">
-                <span class="glyphicon glyphicon-cloud-download"></span>
-                <span class="rd-hidden-xs">Download Dataset</span>
-            </a>
-        </p>
-        <p ng-show="query.id != undefined && (isQueryOwner || currentUser.hasPermission('delete_queries'))">
-            <a class="btn btn-danger btn-sm" ng-disabled="queryExecuting" data-toggle="modal" data-target="#delete-confirmation-modal">
-                <span class="glyphicon glyphicon-remove"></span>
-                <span class="rd-hidden-xs">Delete query</span>
-            </a>
-
-            <div class="modal fade" id="delete-confirmation-modal" tabindex="-1" role="dialog" aria-labelledby="deleteConfirmationModal" aria-hidden="true">
-              <div class="modal-dialog">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h4 class="modal-title">Query deletion</h4>
-                </div>
-                <div class="modal-body">
-                    Are you sure you want to delete the query?
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default"  data-dismiss="modal">No</button>
-                    <button type="button" class="btn btn-primary" ng-click="deleteQuery()">Yes, delete!</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</p>
-
-
-
-<div class="modal fade" id="new-fork-form" tabindex="-1" role="dialog" aria-labelledby="newforkform" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h4 class="modal-title">Rename Query</h4>
-    </div>
-    <div class="modal-body">
-        Choose a name for the forked query <br />
-        <input editable="isQueryOwner" done="saveName" ng-model="forkName" id="forkName" type="text" ignore-blanks='true'></input>
-    </div>
-    <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="duplicateQuery(forkName)">Create fork</button>
-
-    </div>
-
-
-
-</div>
-</div>
-</div>
-
-</div>
-
-<div class="col-lg-9">
-    <!-- alerts -->
-    <div class="alert alert-info" ng-show="queryResult.getStatus() == 'processing'">
-        Executing query&hellip; <rd-timer timestamp="queryResult.getUpdatedAt()"></rd-timer>
-        <button type="button" class="btn btn-warning btn-xs pull-right" ng-disabled="cancelling" ng-click="cancelExecution()">Cancel</button>
-    </div>
-    <div class="alert alert-info" ng-show="queryResult.getStatus() == 'waiting'">
-        Query in queue&hellip; <rd-timer timestamp="queryResult.getUpdatedAt()"></rd-timer>
-        <button type="button" class="btn btn-warning btn-xs pull-right" ng-disabled="cancelling" ng-click="cancelExecution()">Cancel</button>
-    </div>
-    <div class="alert alert-danger" ng-show="queryResult.getError()">Error running query: <strong>{{queryResult.getError()}}</strong></div>
-
-    <!-- tabs and data -->
-    <div ng-show="queryResult.getStatus() == 'done'">
         <div class="row">
             <div class="col-lg-12">
-                <ul class="nav nav-tabs">
-                    <rd-tab tab-id="table" name="Table"></rd-tab>
-                    <rd-tab tab-id="pivot" name="Pivot Table"></rd-tab>
-                    <rd-tab tab-id="{{vis.id}}" name="{{vis.name}}" ng-if="vis.type!='TABLE'" ng-repeat="vis in query.visualizations">
-                    <span class="remove" ng-click="deleteVisualization($event, vis)" ng-show="canEdit"> &times;</span>
-                </rd-tab>
-                <rd-tab tab-id="add" name="&plus; New" removeable="true" ng-show="canEdit"></rd-tab>
-            </ul>
+                <div ng-show="sourceMode">
+                    <p>
+                        <button type="button" class="btn btn-primary btn-xs" ng-disabled="queryExecuting" ng-click="goToBottom(); executeQuery()">
+                            <span class="glyphicon glyphicon-play"></span> Execute
+                        </button>
+                        <query-formatter></query-formatter>
+                        <span class="pull-right">
+                          <a class="btn btn-default btn-xs" ng-disabled="queryExecuting" data-toggle="modal" data-target="#new-fork-form">
+                            <span class="glyphicon glyphicon-share-alt"></span>
+                            <span class="rd-hidden-xs">Fork</span>
+                        </a>
+                        <button class="btn btn-success btn-xs" ng-show="canEdit" ng-click="saveQuery()">
+                            <span class="glyphicon glyphicon-floppy-disk"> </span> Save<span ng-show="isDirty">&#42;</span>
+                        </button>
+                    </span>
+
+                </p>
+            </div>
+
+            <!-- code editor -->
+            <div ng-show="sourceMode">
+                <p>
+                    <query-editor query="query" lock="queryExecuting"></query-editor>
+                </p>
+                <hr>
+            </div>
         </div>
+
     </div>
+
     <div class="row">
-        <div class="col-lg-12">
-            <div ng-show="selectedTab == 'table'" >
-                <filters></filters>
-                <grid-renderer query-result="queryResult" items-per-page="50"></grid-renderer>
+        <div class="col-lg-3 rd-hidden-xs">
+            <p>
+                <span class="glyphicon glyphicon-time"></span>
+                <span class="text-muted">Last update </span>
+                <strong>
+                    <rd-time-ago value="queryResult.query_result.retrieved_at"></rd-time-ago>
+                </strong>
+            </p>
+            <p>
+                <span class="glyphicon glyphicon-user"></span>
+                <span class="text-muted">Created By </span>
+                <strong ng-show="isQueryOwner">{{query.user.name}}</strong>
+            </p>
+            <p>
+                <span class="glyphicon glyphicon-play"></span>
+                <span class="text-muted">Runtime </span>
+                <strong ng-show="!queryExecuting">{{queryResult.getRuntime() | durationHumanize}}</strong>
+                <span ng-show="queryExecuting">Running&hellip;</span>
+            </p>
+            <p>
+                <span class="glyphicon glyphicon-align-justify"></span>
+                <span class="text-muted">Rows </span><strong>{{queryResult.getData().length}}</strong>
+            </p>
+            <p>
+                <span class="glyphicon glyphicon-refresh"></span>
+                <span class="text-muted">Refresh Interval</span>
+                <query-refresh-select></query-refresh-select>
+            </p>
+
+            <p>
+                <span class="glyphicon glyphicon-hdd"></span>
+                <span class="text-muted">Data Source</span>
+                <select ng-disabled="!isQueryOwner" ng-model="query.data_source_id" ng-change="updateDataSource()" ng-options="ds.id as ds.name for ds in dataSources"></select>
+            </p>
+
+            <hr>
+
+            <p>
+                <a class="btn btn-primary btn-sm" ng-disabled="queryExecuting || !queryResult.getData()" ng-href="{{dataUri}}" download="{{dataFilename}}" target="_self">
+                    <span class="glyphicon glyphicon-cloud-download"></span>
+                    <span class="rd-hidden-xs">Download Dataset</span>
+                </a>
+            </p>
+            <p ng-show="query.id != undefined && (isQueryOwner || currentUser.hasPermission('delete_queries'))">
+                <a class="btn btn-danger btn-sm" ng-disabled="queryExecuting" data-toggle="modal" data-target="#delete-confirmation-modal">
+                    <span class="glyphicon glyphicon-remove"></span>
+                    <span class="rd-hidden-xs">Delete query</span>
+                </a>
+
+                <div class="modal fade" id="delete-confirmation-modal" tabindex="-1" role="dialog" aria-labelledby="deleteConfirmationModal" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h4 class="modal-title">Query deletion</h4>
+
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to delete the query?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default"  data-dismiss="modal">No</button>
+                        <button type="button" class="btn btn-primary" ng-click="deleteQuery()">Yes, delete!</button>
+                    </div>
+                </div>
             </div>
+        </div>
+    </p>
 
-            <pivot-table-renderer ng-show="selectedTab == 'pivot'" query-result="queryResult"></pivot-table-renderer>
 
-            <div ng-show="selectedTab == vis.id" ng-repeat="vis in query.visualizations">
-                <visualization-renderer visualization="vis" query-result="queryResult"></visualization-renderer>
 
-                <edit-visulatization-form visualization="vis" query="query" query-result="queryResult" ng-show="canEdit"></edit-visulatization-form>
-            </div>
+    <div class="modal fade" id="new-fork-form" tabindex="-1" role="dialog" aria-labelledby="newforkform" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Rename Query</h4>
+        </div>
+        <div class="modal-body">
+            Choose a name for the forked query <br />
+            <input editable="isQueryOwner" done="saveName" ng-model="forkName" id="forkName" type="text" ignore-blanks='true'></input>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="duplicateQuery(forkName)">Create fork</button>
 
-            <div ng-show="selectedTab == 'add'">
-                <visualization-renderer visualization="newVisualization" query-result="queryResult"></visualization-renderer>
-                <edit-visulatization-form visualization="newVisualization" query="query" ng-show="canEdit" open-editor="true" on-new-success="setVisualizationTab"></edit-visulatization-form>
+        </div>
+
+
+
+                </div>
             </div>
         </div>
     </div>
-</div>
-</div>
-</div>
-</div>
+
+    <div class="col-lg-9">
+        <!-- alerts -->
+        <div class="alert alert-info" ng-show="queryResult.getStatus() == 'processing'">
+            Executing query&hellip; <rd-timer timestamp="queryResult.getUpdatedAt()"></rd-timer>
+            <button type="button" class="btn btn-warning btn-xs pull-right" ng-disabled="cancelling" ng-click="cancelExecution()">Cancel</button>
+        </div>
+        <div class="alert alert-info" ng-show="queryResult.getStatus() == 'waiting'">
+            Query in queue&hellip; <rd-timer timestamp="queryResult.getUpdatedAt()"></rd-timer>
+            <button type="button" class="btn btn-warning btn-xs pull-right" ng-disabled="cancelling" ng-click="cancelExecution()">Cancel</button>
+        </div>
+        <div class="alert alert-danger" ng-show="queryResult.getError()">Error running query: <strong>{{queryResult.getError()}}</strong></div>
+
+        <!-- tabs and data -->
+        <div ng-show="queryResult.getStatus() == 'done'">
+            <div class="row">
+                <div class="col-lg-12">
+                    <ul class="nav nav-tabs">
+                        <rd-tab tab-id="table" name="Table"></rd-tab>
+                        <rd-tab tab-id="pivot" name="Pivot Table"></rd-tab>
+                        <rd-tab tab-id="{{vis.id}}" name="{{vis.name}}" ng-if="vis.type!='TABLE'" ng-repeat="vis in query.visualizations">
+                        <span class="remove" ng-click="deleteVisualization($event, vis)" ng-show="canEdit"> &times;</span>
+                    </rd-tab>
+                    <rd-tab tab-id="add" name="&plus; New" removeable="true" ng-show="canEdit"></rd-tab>
+                </ul>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <div ng-show="selectedTab == 'table'" >
+                    <filters></filters>
+                    <grid-renderer query-result="queryResult" items-per-page="50"></grid-renderer>
+                </div>
+
+                <pivot-table-renderer ng-show="selectedTab == 'pivot'" query-result="queryResult"></pivot-table-renderer>
+
+                <div ng-show="selectedTab == vis.id" ng-repeat="vis in query.visualizations">
+                    <visualization-renderer visualization="vis" query-result="queryResult"></visualization-renderer>
+
+                    <edit-visulatization-form visualization="vis" query="query" query-result="queryResult" ng-show="canEdit"></edit-visulatization-form>
+                </div>
+
+                <div ng-show="selectedTab == 'add'">
+                    <visualization-renderer visualization="newVisualization" query-result="queryResult"></visualization-renderer>
+                    <edit-visulatization-form visualization="newVisualization" query="query" ng-show="canEdit" open-editor="true" on-new-success="setVisualizationTab"></edit-visulatization-form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

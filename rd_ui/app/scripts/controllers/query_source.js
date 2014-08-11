@@ -35,13 +35,12 @@
     KeyboardShortcuts.bind(shortcuts);
 
     // @override
-    $scope.saveQuery = function(options, data) {
+    $scope.saveQuery = function(options, data) {      
       var savePromise = saveQuery(options, data);
 
       savePromise.then(function(savedQuery) {
         queryText = savedQuery.query;
         $scope.isDirty = $scope.query.query !== queryText;
-
         if (isNewQuery) {
           // redirect to new created query (keep hash)
           $location.path(savedQuery.getSourceLink()).replace();
@@ -55,7 +54,7 @@
       Events.record(currentUser, 'fork', 'query', $scope.query.id);
       $scope.query.id = null;
       $scope.query.ttl = -1;
-      $scope.query.is_archived = 'f';
+      $scope.query.is_archived = false;
       $scope.query.name = name;
       
 
