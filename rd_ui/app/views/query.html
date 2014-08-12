@@ -1,8 +1,7 @@
 
 <div class="container">
 
-    <alert-unsaved-changes ng-if="canEdit" is-dirty="isDirty"></alert-unsaved-changes>
-
+    <alert-unsaved-changes ng-if="canEdit" is-dirty="isDirty"></alert-unsaved-changes>    
     <div class="row">
         <div class="col-lg-12">
             <div class="row">
@@ -55,7 +54,7 @@
         <div class="col-lg-12">
             <div ng-show="sourceMode">
                 <p>
-                    <button type="button" class="btn btn-primary btn-xs" ng-disabled="queryExecuting" ng-click="executeQuery()">
+                    <button type="button" class="btn btn-primary btn-xs" ng-disabled="queryExecuting" ng-click="goToBottom(); executeQuery()">
                         <span class="glyphicon glyphicon-play"></span> Execute
                     </button>
                     <query-formatter></query-formatter>
@@ -94,8 +93,7 @@
             <p>
                 <span class="glyphicon glyphicon-user"></span>
                 <span class="text-muted">Created By </span>
-                 <strong ng-hide="isQueryOwner">{{query.user.name}}</strong>
- -                <strong ng-show="isQueryOwner">You</strong>
+                 <strong ng-show="isQueryOwner">{{query.user.name}}</strong>                 
             </p>
             <p>
                 <span class="glyphicon glyphicon-play"></span>
@@ -126,9 +124,9 @@
                     <span class="glyphicon glyphicon-cloud-download"></span>
                     <span class="rd-hidden-xs">Download Dataset</span>
                 </a>
-            </p>
+            </p>          
             <p ng-show="query.id != undefined && (isQueryOwner || currentUser.hasPermission('delete_queries'))">
-                <a class="btn btn-danger btn-sm" ng-disabled="queryExecuting" data-toggle="modal" data-target="#delete-confirmation-modal">
+                <a class="btn btn-danger btn-sm" ng-disabled="queryExecuting" data-toggle="modal" data-target="#delete-confirmation-modal">                
                     <span class="glyphicon glyphicon-remove"></span>
                     <span class="rd-hidden-xs">Delete query</span>
                 </a>
@@ -143,8 +141,8 @@
                         Are you sure you want to delete the query?
                       </div>
                       <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">No</button>
-                        <button type="button" class="btn btn-primary" ng-click="deleteQuery()">Yes, delete!</button>
+                        <button type="button" class="btn btn-default"  data-dismiss="modal" >No</button>
+                        <button type="button" class="btn btn-primary" data-dismiss="modal"  ng-click="deleteQuery()({id:query.id}, redirect);">Yes, delete!</button>
                       </div>
                     </div>
                   </div>
