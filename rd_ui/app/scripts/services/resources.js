@@ -361,9 +361,10 @@
 
      Query.prototype.queryWidget = function () {
       if (this.id != null) {
-        return queryWidget.get({id:this.id});
+        //return queryWidget.get({id:this.id});
+        return {};
       }
-      return null
+      return null;
     };
 
     Query.prototype.getQueryResult = function (ttl) {

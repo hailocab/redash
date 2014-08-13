@@ -73,23 +73,23 @@
       Events.record(currentUser, 'cancel_execute', 'query', $scope.query.id);
     };
 
-    $scope.deleteQuery = function () {
+    // $scope.deleteQuery = function () {
 
 
-      var options = {
-        successMessage: 'Query deleted',
-        errorMessage: 'Query could not be deleted',
-        errorQueryUsed: 'This query is used in a dashboard'
-      };
+    //   var options = {
+    //     successMessage: 'Query deleted',
+    //     errorMessage: 'Query could not be deleted',
+    //     errorQueryUsed: 'This query is used in a dashboard'
+    //   };
 
-      if ($scope.queryUsed.widget == null) {
-        var dashboards = $scope.dashboards
-        Events.record(currentUser, "archive", "query", $scope.query.id);
-        return $scope.query.$delete;
-      } else {
-        growl.addErrorMessage(options.errorQueryUsed);
-      }
-    }
+    //   if ($scope.queryUsed.widget == null) {
+    //     var dashboards = $scope.dashboards
+    //     Events.record(currentUser, "archive", "query", $scope.query.id);
+    //     return $scope.query.$delete;
+    //   } else {
+    //     growl.addErrorMessage(options.errorQueryUsed);
+    //   }
+    // }
 
     $scope.redirect = function() {
        return $location.path('/queries');
