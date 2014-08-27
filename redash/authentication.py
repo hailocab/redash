@@ -4,6 +4,7 @@ import hmac
 import time
 import json
 import logging
+import os
 
 from flask import session, request, make_response, redirect, url_for
 from flask.ext.googleauth import GoogleAuth, login
@@ -20,9 +21,10 @@ logger = logging.getLogger('authentication')
 
 app.config.update(
     SECRET_KEY='Miengous3Xie5meiyae6iu6mohsaiRae',
-    GOOGLE_LOGIN_CLIENT_ID='210515825314-4f5r35e7eesrajndhq7h96bj9mk5mrll.apps.googleusercontent.com',
-    GOOGLE_LOGIN_CLIENT_SECRET='Mp9PG5eW8fzrSkm7g15lc8oe',
-    GOOGLE_LOGIN_REDIRECT_URI='http://localhost:5000/oauth2callback')
+    GOOGLE_LOGIN_CLIENT_ID=os.environ.get('REDASH_OAUTH_ID'),
+    GOOGLE_LOGIN_CLIENT_SECRET=os.environ.get('REDASH_OAUTH_SECRET'),
+    GOOGLE_LOGIN_REDIRECT_URI=os.environ.get('REDASH_OAUTH_REDIRECT'))
+
 googlelogin = GoogleLogin(app,login_manager)
 
 def sign(key, path, expires):
