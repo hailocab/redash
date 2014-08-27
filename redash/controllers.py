@@ -410,10 +410,13 @@ class QueryListAPI(BaseResource):
 
 class QueryAPI(BaseResource):
     @require_permission('edit_query')
-    def post(self, query_id):
+    def post(self, query_id):      
         query_def = request.get_json(force=True)
         for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'user']:
             query_def.pop(field, None)
+       
+
+
 
         if 'latest_query_data_id' in query_def:
             query_def['latest_query_data'] = query_def.pop('latest_query_data_id')
@@ -428,7 +431,7 @@ class QueryAPI(BaseResource):
         return query.to_dict(with_result=False, with_visualizations=True)
 
     @require_permission('view_query')
-    def get(self, query_id):
+    def get(self, query_id):        
         q = models.Query.get(models.Query.id == query_id)
         if q:
             return q.to_dict(with_visualizations=True)
@@ -534,9 +537,18 @@ class QueryResultAPI(BaseResource):
         else:
             abort(404)
 
+def from_utc(utcTime,fmt="%Y-%m-%dT%H:%M:%S"):
+    """
+    Convert UTC time string to time.struct_time
+    """
+    return datetime.datetime.strptime(utcTime, fmt)
 
 class CsvQueryResultsAPI(BaseResource):
     @require_permission('view_query')
+
+
+
+
     def get(self, query_id, query_result_id=None):
         if not query_result_id:
             query = models.Query.get(models.Query.id == query_id)
@@ -553,13 +565,11 @@ class CsvQueryResultsAPI(BaseResource):
             writer.writeheader()
             for row in query_data['rows']:
                 for k, v in row.iteritems():
-                    if (v > 1000 * 1000 * 1000 * 100):
-                        v = v.replace('T', ' ')                        
-                        row[k] = v                  
-
-                    if isinstance(v, numbers.Number) and (v > 1000 * 1000 * 1000 * 100):
-                        row[k] = datetime.datetime.fromtimestamp(v/1000.0)
-
+                    try:                        
+                        date = from_utc(v)                        
+                        row[k] = date                        
+                    except:
+                        False
                 writer.writerow(row)
 
             return make_response(s.getvalue(), 200, {'Content-Type': "text/csv; charset=UTF-8"})
