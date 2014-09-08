@@ -25,7 +25,7 @@
     "underscore.string": "~2.3.3",
     "marked": "~0.3.2",
     "bucky": "~0.2.6",
-    "mapboxjs": "~1.6.1",
+    "mapbox.js": "~1.6.1",
     "Leaflet.heat": "https://github.com/Leaflet/Leaflet.heat.git#gh-pages"
   },
   "devDependencies": {
