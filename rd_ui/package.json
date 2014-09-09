@@ -4,6 +4,7 @@
   "dependencies": {
   },
   "devDependencies": {
+    "tmp": "0.0.23",
     "grunt": "git+https://github.com/gruntjs/grunt.git#08a3af5",
     "grunt-contrib-copy": "~0.4.1",
     "grunt-contrib-concat": "~0.3.0",
