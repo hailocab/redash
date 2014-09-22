@@ -13,7 +13,8 @@ from werkzeug.contrib.fixers import ProxyFix
 from flask_googlelogin import GoogleLogin
 
 from models import AnonymousUser
-from redash import app, models, settings
+from redash import models, settings
+from redash.wsgi import app
 
 login_manager = LoginManager()
 logger = logging.getLogger('authentication')

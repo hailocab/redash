@@ -77,26 +77,6 @@
         });
     });
 
-    directives.directive('rdTab', function() {
-        return {
-            restrict: 'E',
-            scope: {
-                'tabId': '@',
-                'name': '@'
-            },
-            transclude: true,
-            template: '<li class="rd-tab" ng-class="{active: tabId==selectedTab}"><a href="#{{tabId}}">{{name}}<span ng-transclude></span></a></li>',
-            replace: true,
-            link: function(scope) {
-                scope.$watch(function() {
-                    return scope.$parent.selectedTab
-                }, function(tab) {
-                    scope.selectedTab = tab;
-                });
-            }
-        }
-    });
-
     directives.directive('rdTabs', ['$location',
         function($location) {
             return {
