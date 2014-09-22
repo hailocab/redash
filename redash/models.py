@@ -158,6 +158,8 @@ class User(BaseModel, UserMixin):
     def verify_password(self, password):
         return self.password_hash and pwd_context.verify(password, self.password_hash)
 
+    def is_active(self):
+        return True
 
 class ActivityLog(BaseModel):
     QUERY_EXECUTION = 1

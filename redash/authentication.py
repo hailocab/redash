@@ -2,18 +2,29 @@ import functools
 import hashlib
 import hmac
 import time
+import json
 import logging
+import os
 
-from flask import request, make_response, redirect, url_for
-from flask.ext.login import LoginManager, login_user, current_user
+from flask import session, request, make_response, redirect, url_for
 from flask.ext.googleauth import GoogleAuth, login
+from flask.ext.login import LoginManager, login_user, current_user
 from werkzeug.contrib.fixers import ProxyFix
+from flask_googlelogin import GoogleLogin
 
-from redash import models, settings
+from models import AnonymousUser
+from redash import app, models, settings
 
 login_manager = LoginManager()
 logger = logging.getLogger('authentication')
 
+app.config.update(
+    SECRET_KEY='Miengous3Xie5meiyae6iu6mohsaiRae',
+    GOOGLE_LOGIN_CLIENT_ID=os.environ.get('REDASH_OAUTH_ID'),
+    GOOGLE_LOGIN_CLIENT_SECRET=os.environ.get('REDASH_OAUTH_SECRET'),
+    GOOGLE_LOGIN_REDIRECT_URI=os.environ.get('REDASH_OAUTH_REDIRECT'))
+
+googlelogin = GoogleLogin(app,login_manager)
 
 def sign(key, path, expires):
     if not key:
@@ -87,6 +98,49 @@ login.connect(create_and_login_user)
 def load_user(user_id):
     return models.User.select().where(models.User.id == user_id).first()
 
+@app.route('/oauth2callback')
+@googlelogin.oauth2callback
+def google_login(token, userinfo, **params):
+    
+    user = models.User.select().where(models.User.email == userinfo['email']).first()
+
+    if (user == None):
+        logger.debug("Creating user object (%r)", userinfo)
+        user = models.User.create(name=userinfo['name'], email=userinfo['email'], groups = ['default','default-non-jss'])
+
+    login_user(user)
+    session['token'] = json.dumps(token)
+    session['extra'] = params.get('extra')
+    return redirect(request.args.get('next') or '/')
+
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated():
+        return redirect(request.args.get('next') or '/')
+
+    if not settings.PASSWORD_LOGIN_ENABLED:
+
+        return redirect(googlelogin.login_url(
+            approval_prompt='force',
+            scopes=['https://www.googleapis.com/auth/userinfo.email'],
+            access_type='offline',
+        ))
+
+    if request.method == 'POST':
+        user = models.User.select().where(models.User.email == request.form['username']).first()
+        if user and user.verify_password(request.form['password']):
+            remember = ('remember' in request.form)
+            login_user(user, remember=remember)
+            return redirect(request.args.get('next') or '/')
+
+    return render_template("login.html",
+                           name=settings.NAME,
+                           analytics=settings.ANALYTICS,
+                           next=request.args.get('next'),
+                           username=request.form.get('username', ''),
+                           show_google_openid=settings.GOOGLE_OPENID_ENABLED)
 
 def setup_authentication(app):
     if settings.GOOGLE_OPENID_ENABLED:
