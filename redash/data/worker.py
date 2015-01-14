@@ -357,6 +357,15 @@ class Worker(multiprocessing.Process):
         logging.info("[%s][%s] query finished... data length=%s, error=%s",
                      self.name, job.id, data and len(data), error)
 
+        # Adam
+        #if error != 'None':
+        if error:
+                logging.info("[%s][%s] query failed: hash: %s, wasted time: %i, error: %s",
+                    self.name, job.id, job.query_hash, run_time, error)
+        else:
+                logging.info("[%s][%s] query succeeded: hash: %s, used time: %i",
+                    self.name, job.id, job.query_hash, run_time)
+
         # TODO: it is possible that storing the data will fail, and we will need to retry
         # while we already marked the job as done
         query_result_id = None
