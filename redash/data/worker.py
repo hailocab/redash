@@ -332,9 +332,9 @@ class Worker(multiprocessing.Process):
         pid = os.getpid()
         job.processing(pid)
 
-        logging.info("[%s][%s] running query...", self.name, job.id)
+        logging.info("[%s][%s] running query; query_hash=%s", self.name, job.id, job.query_hash)
         start_time = time.time()
-        self.set_title("running query %s" % job_id)
+        self.set_title( 'running query; job_id={0}; query_hash={1}'.format(job_id,job.query_hash))
 
         logging.info("[%s][%s] Loading query runner (%s, %s)...", self.name, job.id,
                      job.data_source_name, job.data_source_type)
