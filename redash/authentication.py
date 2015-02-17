@@ -23,7 +23,8 @@ app.config.update(
     SECRET_KEY='Miengous3Xie5meiyae6iu6mohsaiRae',
     GOOGLE_LOGIN_CLIENT_ID=os.environ.get('REDASH_OAUTH_ID'),
     GOOGLE_LOGIN_CLIENT_SECRET=os.environ.get('REDASH_OAUTH_SECRET'),
-    GOOGLE_LOGIN_REDIRECT_URI=os.environ.get('REDASH_OAUTH_REDIRECT'))
+    GOOGLE_LOGIN_REDIRECT_URI=os.environ.get('REDASH_OAUTH_REDIRECT'),
+    GOOGLE_LOGIN_REDIRECT_SCHEME=os.environ.get('GOOGLE_LOGIN_REDIRECT_SCHEME'))
 
 googlelogin = GoogleLogin(app,login_manager)
 
@@ -102,6 +103,7 @@ def load_user(user_id):
 @app.route('/oauth2callback')
 @googlelogin.oauth2callback
 def google_login(token, userinfo, **params):
+    logger.info("google_login:vhost==%s,userinfo[email]==%s", request.headers.get('host'), userinfo['email'])
     
     user = models.User.select().where(models.User.email == userinfo['email']).first()
 
