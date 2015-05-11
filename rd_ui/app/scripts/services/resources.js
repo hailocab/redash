@@ -367,6 +367,18 @@
       return null;
     };
 
+    Query.prototype.getPivot = function () {
+        if (this.visualizations){
+            for (var i=0; i<this.visualizations.length; i++) {
+                if (this.visualizations[i].name == "pivot"){
+                    return this.visualizations[i];
+                }
+            }
+            return null;
+        }
+        return null;
+    };
+
     Query.prototype.getQueryResult = function (ttl) {
       if (ttl == undefined) {
         ttl = this.ttl;

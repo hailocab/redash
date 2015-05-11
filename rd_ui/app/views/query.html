@@ -186,8 +186,9 @@
                     <grid-renderer query-result="queryResult" items-per-page="50"></grid-renderer>
                 </div>
 
-                <pivot-table-renderer ng-show="selectedTab == 'pivot'" query-result="queryResult"></pivot-table-renderer>
-
+                <div ng-show="selectedTab == 'pivot'" ng-submit="submit()">
+                    <pivot-table-renderer ng-show="selectedTab == 'pivot'" query="query" visualization="query.getPivot()" query-result="queryResult"></pivot-table-renderer>
+                </div>
                 <div ng-show="selectedTab == vis.id" ng-repeat="vis in query.visualizations">
                     <visualization-renderer visualization="vis" query-result="queryResult"></visualization-renderer>
 
@@ -197,9 +198,9 @@
                 <div ng-show="selectedTab == 'add'">
                     <visualization-renderer visualization="newVisualization" query-result="queryResult"></visualization-renderer>
                     <edit-visulatization-form visualization="newVisualization" query="query" ng-show="canEdit" open-editor="true" on-new-success="setVisualizationTab"></edit-visulatization-form>
-                            </div>
-                        </div>
-                    </div>
+                </div>
+            </div>
+        </div>
                 </div>
             </div>
         </div>
