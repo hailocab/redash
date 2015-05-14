@@ -187,7 +187,7 @@
                 </div>
 
                 <div ng-show="selectedTab == 'pivot'" ng-submit="submit()">
-                    <pivot-table-renderer ng-show="selectedTab == 'pivot'" query="query" visualization="query.getPivot()" query-result="queryResult"></pivot-table-renderer>
+                    <pivot-table-renderer ng-show="selectedTab == 'pivot'" query="query" visualization="query.getPivot()" query-result="queryResult" edit="true"></pivot-table-renderer>
                 </div>
                 <div ng-show="selectedTab == vis.id" ng-repeat="vis in query.visualizations">
                     <visualization-renderer visualization="vis" query-result="queryResult"></visualization-renderer>

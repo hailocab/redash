@@ -14,7 +14,8 @@
         scope: {
             query: '=',
             visualization: '=',
-            queryResult: '='
+            queryResult: '=',
+            edit: '='
         },
         templateUrl: "/views/visualizations/pivot.html",
         replace: false,
@@ -51,7 +52,7 @@
                     //delete some bulky default values
                     delete pivotOptions["rendererOptions"];
                     delete pivotOptions["localeStrings"];
-                    $(element).find('#p').pivotUI(data, pivotOptions);
+                    $(element).find('#pivot_container').pivotUI(data, pivotOptions);
                 }
             });
 
