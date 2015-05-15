@@ -2,7 +2,7 @@
   var pivotTableVisualization = angular.module('redash.visualization');
   pivotTableVisualization.config(['VisualizationProvider', function (VisualizationProvider) {
     VisualizationProvider.registerVisualization({
-      type: 'TABLE',
+      type: 'PIVOT',
       name: 'pivot',
       renderTemplate: '<pivot-table-renderer visualization="visualization" query-result="queryResult"></pivot-table-renderer>',
       skipTypes: true
@@ -23,7 +23,7 @@
               var empty = function(){
                   return {
                     'query_id': $scope.query.id,
-                    'type': "TABLE",
+                    'type': "PIVOT",
                     'name': "pivot",
                     'description': $scope.query.description || '',
                     'options': {}
