@@ -44,14 +44,30 @@
           } else {
             $scope.chartSeries.splice(0, $scope.chartSeries.length);
 
-            _.each($scope.queryResult.getChartData(), function (s) {
-              $scope.chartSeries.push(_.extend(s, {'stacking': 'normal'}));
-            });
+            if($scope.options.colorOverrides){
+                var colorOverrides = $scope.options.colorOverrides.split(',');
+                _.each($scope.queryResult.getChartData(), function (s) {
+                  var colorOverride = getColorOverride(colorOverrides, s.name);
+                  $scope.chartSeries.push(_.extend(s, {'stacking': 'normal', 'color': colorOverride}));
+                });
+            }else {
+                _.each($scope.queryResult.getChartData(), function (s) {
+                    $scope.chartSeries.push(_.extend(s, {'stacking': 'normal'}));
+                });
+            }
           }
         });
       }]
     }
   });
+
+  function getColorOverride(colorOverrides, seriesName){
+    var colorOverride = _.find(colorOverrides, function(e){
+        return e.slice(0, seriesName.length) == seriesName;
+    })
+
+    return colorOverride ? colorOverride.split(':')[1] : null;
+  }
 
   chartVisualization.directive('chartEditor', function () {
     return {
@@ -80,6 +96,7 @@
 
         scope.xAxisType = "datetime";
         scope.stacking = "none";
+        scope.colorOverrides = "";
 
         var chartOptionsUnwatch = null;
 
@@ -107,6 +124,12 @@
               scope.visualization.options.xAxis = scope.visualization.options.xAxis || {};
               scope.visualization.options.xAxis.type = xAxisType;
             });
+
+            scope.colorOverrides = scope.visualization.options.colorOverrides;
+            colorOverridesUnwatch = scope.$watch("colorOverrides", function (colorOverrides) {
+                scope.visualization.options.colorOverrides = colorOverrides;
+            });
+
           } else {
             if (chartOptionsUnwatch) {
               chartOptionsUnwatch();
@@ -116,6 +139,11 @@
             if (xAxisUnwatch) {
               xAxisUnwatch();
               xAxisUnwatch = null;
+            }
+
+            if (colorOverridesUnwatch) {
+                colorOverridesUnwatch();
+                colorOverridesUnwatch = null;
             }
           }
         });
