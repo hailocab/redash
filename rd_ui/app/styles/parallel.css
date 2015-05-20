@@ -1,0 +1,49 @@
+/* Pie Charts */
+#pie {
+  opacity: 0.8;
+}
+
+#parallel svg {
+  font: 12px sans-serif;
+}
+
+#parallel .background path {
+  display: none;
+  fill: none;
+  stroke: #d4d4d4;
+  stroke-opacity: 1;
+  shape-rendering: crispEdges;
+}
+
+#parallel .foreground path,
+#parallel .highlight path {
+  fill: none;
+  stroke: darkolivegreen;
+  stroke-width: 1.5;
+  stroke-opacity: .2;
+}
+
+#parallel .highlight path {
+  stroke-opacity: 1;
+}
+
+#parallel .brush .extent {
+  fill-opacity: .2;
+  stroke: #fff;
+  shape-rendering: crispEdges;
+}
+
+#parallel .axis line, .axis path {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+#parallel .axis text {
+  text-shadow:
+   -1px -1px 0 #fff,
+    1px -1px 0 #fff,
+   -1px 1px 0 #fff,
+    1px 1px 0 #fff;
+  cursor: move;
+}
