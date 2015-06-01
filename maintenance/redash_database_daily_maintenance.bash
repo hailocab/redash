@@ -2,6 +2,8 @@
 
 OUTPUT=/tmp/`basename ${0}`.${LOGNAME}.output.tmp
 
+cat /dev/null > ${OUTPUT}
+
 source /opt/redash/.env
 
 echo ${REDASH_DATABASE_URL}
@@ -15,12 +17,12 @@ PORT=`echo ${REDASH_DATABASE_URL} | cut -d':' -f4 | cut -d'/' -f1`
 export PGUSER=${USER}
 export PGPASSWORD=${PASSWORD}
 
-echo "delete from query_results qr where qr.retrieved_at < now()-interval '1 month' and qr.id not in (select q.latest_query_data_id from queries q where q.latest_query_data_id is not null); vacuum analyze verbose query_results;" | psql --host=${HOST} --port=${PORT} ${DATABASE} --no-password --echo-all 1>${OUTPUT} 2>&1
+/bin/echo -e '\\timing\ndelete from query_results qr where qr.id not in (select q.latest_query_data_id from queries q where q.latest_query_data_id is not null); vacuum verbose analyze query_results;' | psql --host=${HOST} --port=${PORT} ${DATABASE} --no-password --echo-all 1>${OUTPUT} 2>&1
 
 if [ "${?}" != "0" ]
 then
 	cat ${OUTPUT}
-fi
+fi 
 
-rm ${OUTPUT}
 exit 0
+
