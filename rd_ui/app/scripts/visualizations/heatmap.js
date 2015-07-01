@@ -47,16 +47,7 @@
         var map = L.mapbox.map(element[0]);
         var layer = null;
         
-        $scope.$watch(
-          function() {
-            return element.is(':visible');
-          }, 
-          function(isVisible) {
-            $scope.isVisible = isVisible;
-          }
-        );
-        
-        $scope.$watch('queryResult && queryResult.getData() && isVisible', function (data) {
+        $scope.$watch('queryResult && queryResult.getData()', function (data) {
           if (!data) {
             return;
           }
