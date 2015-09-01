@@ -107,26 +107,18 @@
                 name: 'No Refresh'
             },
             {
-                value: 60 * 15,
-                name: 'Every 15mins'
+                value: 12 * 3600,
+                name: 'Every 12h'
             },
+            {
+                value: 24 * 3600,
+                name: 'Every 24h'
+            },
+            {
+                value: 7 * 24 * 3600,
+                name: 'Once a week'
+            }
         ]
-
-        _.each(_.range(1, 13), function (i) {
-            $scope.refreshOptions.push({
-                value: i * 3600,
-                name: 'Every ' + i + 'h'
-            });
-        })
-
-        $scope.refreshOptions.push({
-            value: 24 * 3600,
-            name: 'Every 24h'
-        });
-        $scope.refreshOptions.push({
-            value: 7 * 24 * 3600,
-            name: 'Once a week'
-        });
       }
 
     }
