@@ -412,11 +412,12 @@ class QueryAPI(BaseResource):
     @require_permission('edit_query')
     def post(self, query_id):      
         query_def = request.get_json(force=True)
-        for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data', 'user']:
+        for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data']:
             query_def.pop(field, None)
        
-
-
+        if 'user' in query_def:
+            user = query_def.pop('user')
+            query_def['user'] = models.User.get_by_id(user["id"])
 
         if 'latest_query_data_id' in query_def:
             query_def['latest_query_data'] = query_def.pop('latest_query_data_id')

@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    function QueryViewCtrl($scope, Events, $route, $timeout, $location, notifications, growl, Query, DataSource, Widget, Dashboard) {
+    function QueryViewCtrl($scope, Events, $route, $timeout, $location, notifications, growl, Query, DataSource, Widget, Dashboard, Users) {
         var DEFAULT_TAB = 'table';
 
         $scope.query = $route.current.locals.query;
@@ -16,6 +16,10 @@
         $scope.dataSources = DataSource.get(function(dataSources) {
             $scope.query.data_source_id = $scope.query.data_source_id || dataSources[0].id;
         });
+
+        if(currentUser.hasPermission('admin_users')) {
+            $scope.users = new Users().getUsers();
+        }
 
         $scope.lockButton = function(lock) {
             $scope.queryExecuting = lock;
@@ -186,5 +190,5 @@
     };
 
     angular.module('redash.controllers')
-        .controller('QueryViewCtrl', ['$scope', 'Events', '$route', '$timeout', '$location', 'notifications', 'growl', 'Query', 'DataSource', 'Widget', 'Dashboard', QueryViewCtrl]);
+        .controller('QueryViewCtrl', ['$scope', 'Events', '$route', '$timeout', '$location', 'notifications', 'growl', 'Query', 'DataSource', 'Widget', 'Dashboard', 'Users', QueryViewCtrl]);
 })();
