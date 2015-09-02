@@ -72,7 +72,7 @@
                 <span class="glyphicon glyphicon-user"></span>
                 <span class="text-muted">Owner </span>
                 <strong ng-hide="currentUser.hasPermission('admin_users')">{{query.user.name}}</strong>
-                <select ng-show="currentUser.hasPermission('admin_users')" ng-model="query.user.id" ng-change="saveQuery()" ng-options="ds.id as ds.name for ds in users"></select>
+                <select ng-show="currentUser.hasPermission('admin_users')" ng-model="query.user.id" ng-change="saveQuery()" ng-options="ds.id as ds.name for ds in users" style="width: 50%"></select>
             </p>
             <p>
                 <span class="glyphicon glyphicon-play"></span>
