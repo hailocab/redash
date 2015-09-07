@@ -18,7 +18,14 @@
         });
 
         if(currentUser.hasPermission('admin_users')) {
-            $scope.users = new Users().getUsers();
+            new Users().getUsers().$promise.then(function(result){
+                result.sort(function(a, b) {
+                    if (a.name < b.name) return -1;
+                    if (a.name > b.name) return 1;
+                    return 0;
+                });
+                $scope.users = result;
+            });
         }
 
         $scope.lockButton = function(lock) {
