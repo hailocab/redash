@@ -31,8 +31,8 @@ class ApiUser(UserMixin):
     def permissions(self):
         return ['view_query']
 
-class Table(BaseModel):
 
+class Table(BaseModel):
     class Meta:
         db_table = 'pg_tables'
 
@@ -43,10 +43,11 @@ class Table(BaseModel):
             'tablename': self.tablename,
         }
 
+
 class Group(BaseModel):
     DEFAULT_PERMISSIONS = ['create_dashboard', 'create_query', 'edit_dashboard', 'edit_query',
                            'view_query', 'view_source', 'execute_query']
-    
+
     id = peewee.PrimaryKeyField()
     name = peewee.CharField(max_length=100)
     permissions = ArrayField(peewee.CharField, default=DEFAULT_PERMISSIONS)
@@ -102,9 +103,16 @@ class User(BaseModel, UserMixin):
         # TODO: cache this as weel
         if self._allowed_tables is None:
             self._allowed_tables = set([t.lower() for t in itertools.chain(*[g.tables for g in
-                                        Group.select().where(Group.name << self.groups)])])
+                                                                             Group.select().where(
+                                                                                 Group.name << self.groups)])])
 
         return self._allowed_tables
+
+    def queries(self):
+        return Query.select().where(Query.user == self)
+
+    def dashboards(self):
+        return Dashboard.select().where(Dashboard.user == self)
 
     def __unicode__(self):
         return '%r, %r' % (self.name, self.email)
@@ -118,9 +126,10 @@ class User(BaseModel, UserMixin):
     def is_active(self):
         return True
 
+
 class ActivityLog(BaseModel):
     QUERY_EXECUTION = 1
-    
+
     id = peewee.PrimaryKeyField()
     user = peewee.ForeignKeyField(User)
     type = peewee.IntegerField()
@@ -141,6 +150,7 @@ class ActivityLog(BaseModel):
 
     def __unicode__(self):
         return unicode(self.id)
+
 
 class DataSource(BaseModel):
     id = peewee.PrimaryKeyField()
@@ -221,7 +231,7 @@ class Query(BaseModel):
     ttl = peewee.IntegerField()
     user_email = peewee.CharField(max_length=360, null=True)
     user = peewee.ForeignKeyField(User)
-    created_at = peewee.DateTimeField(default=datetime.datetime.now)    
+    created_at = peewee.DateTimeField(default=datetime.datetime.now)
     is_archived = peewee.BooleanField(default=False, index=True)
 
     class Meta:
@@ -241,7 +251,7 @@ class Query(BaseModel):
             'description': self.description,
             'query': self.query,
             'query_hash': self.query_hash,
-            'ttl': self.ttl,            
+            'ttl': self.ttl,
             'api_key': self.api_key,
             'created_at': self.created_at,
             'data_source_id': self._data.get('data_source', None),
@@ -272,13 +282,13 @@ class Query(BaseModel):
     @classmethod
     def all_queries(cls):
         q = Query.select(Query, User,
-                     peewee.fn.Count(QueryResult.id).alias('times_retrieved'),
-                     peewee.fn.Avg(QueryResult.runtime).alias('avg_runtime'),
-                     peewee.fn.Min(QueryResult.runtime).alias('min_runtime'),
-                     peewee.fn.Max(QueryResult.runtime).alias('max_runtime'),
-                     peewee.fn.Max(QueryResult.retrieved_at).alias('last_retrieved_at'))\
-            .join(QueryResult, join_type=peewee.JOIN_LEFT_OUTER)\
-            .switch(Query).join(User)\
+                         peewee.fn.Count(QueryResult.id).alias('times_retrieved'),
+                         peewee.fn.Avg(QueryResult.runtime).alias('avg_runtime'),
+                         peewee.fn.Min(QueryResult.runtime).alias('min_runtime'),
+                         peewee.fn.Max(QueryResult.runtime).alias('max_runtime'),
+                         peewee.fn.Max(QueryResult.retrieved_at).alias('last_retrieved_at')) \
+            .join(QueryResult, join_type=peewee.JOIN_LEFT_OUTER) \
+            .switch(Query).join(User) \
             .group_by(Query.id, User.id)
 
         return q
@@ -299,7 +309,8 @@ class Query(BaseModel):
     def _set_api_key(self):
         if not self.api_key:
             self.api_key = hashlib.sha1(
-                u''.join((str(time.time()), self.query, str(self._data['user']), self.name)).encode('utf-8')).hexdigest()
+                u''.join((str(time.time()), self.query, str(self._data['user']), self.name)).encode(
+                    'utf-8')).hexdigest()
 
     def __unicode__(self):
         return unicode(self.id)
@@ -323,12 +334,12 @@ class Dashboard(BaseModel):
         layout = json.loads(self.layout)
 
         if with_widgets:
-            widgets = Widget.select(Widget, Visualization, Query, QueryResult, User)\
-                .where(Widget.dashboard == self.id)\
-                .join(Visualization, join_type=peewee.JOIN_LEFT_OUTER)\
-                .join(Query, join_type=peewee.JOIN_LEFT_OUTER)\
-                .join(User, join_type=peewee.JOIN_LEFT_OUTER)\
-                .switch(Query)\
+            widgets = Widget.select(Widget, Visualization, Query, QueryResult, User) \
+                .where(Widget.dashboard == self.id) \
+                .join(Visualization, join_type=peewee.JOIN_LEFT_OUTER) \
+                .join(Query, join_type=peewee.JOIN_LEFT_OUTER) \
+                .join(User, join_type=peewee.JOIN_LEFT_OUTER) \
+                .switch(Query) \
                 .join(QueryResult, join_type=peewee.JOIN_LEFT_OUTER)
             widgets = {w.id: w.to_dict() for w in widgets}
 
@@ -347,7 +358,7 @@ class Dashboard(BaseModel):
 
                 widgets_layout.append(new_row)
 
-            # widgets_layout = map(lambda row: map(lambda widget_id: widgets.get(widget_id, None), row), layout)
+                # widgets_layout = map(lambda row: map(lambda widget_id: widgets.get(widget_id, None), row), layout)
         else:
             widgets_layout = None
 
@@ -442,6 +453,7 @@ class Widget(BaseModel):
     def __unicode__(self):
         return u"%s" % self.id
 
+
 all_models = (DataSource, User, QueryResult, Query, Dashboard, Visualization, Widget, ActivityLog, Group)
 
 
@@ -457,7 +469,7 @@ def create_db(create_tables, drop_tables):
         if drop_tables and model.table_exists():
             # TODO: submit PR to peewee to allow passing cascade option to drop_table.
             db.database.execute_sql('DROP TABLE %s CASCADE' % model._meta.db_table)
-            #model.drop_table()
+            # model.drop_table()
 
         if create_tables and not model.table_exists():
             model.create_table()

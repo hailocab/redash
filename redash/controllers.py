@@ -28,10 +28,10 @@ from redash import models
 
 import logging
 
+
 @app.route('/ping', methods=['GET'])
 def ping():
     return 'PONG.'
-
 
 
 @app.route('/admin/<anything>')
@@ -41,7 +41,6 @@ def ping():
 @app.route('/queries/<query_id>')
 @app.route('/queries/<query_id>/<anything>')
 @app.route('/')
-
 @auth.required
 def index(**kwargs):
     email_md5 = hashlib.md5(current_user.email.lower()).hexdigest()
@@ -65,7 +64,6 @@ def index(**kwargs):
                            analytics=settings.ANALYTICS)
 
 
-
 # @app.route('/admin/groups/<anything>')
 # def admin_group():
 
@@ -85,6 +83,7 @@ def logout():
     session.pop('openid', None)
 
     return redirect('/login')
+
 
 @app.route('/status.json')
 @auth.required
@@ -136,12 +135,12 @@ class BaseResource(Resource):
 
 
 class TableAPI(BaseResource):
-
     @require_permission('admin_groups')
     def get(self):
         source = models.DataSource.select().where(models.DataSource.type == "pg")[0]
         qr = data.query_runner.get_query_runner(source.type, source.options)
-        tablenames = qr("SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name")
+        tablenames = qr(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name")
         result = {}
         result["tablenames"] = [t["table_name"] for t in json.loads(tablenames[0])["rows"]]
         return result
@@ -149,8 +148,8 @@ class TableAPI(BaseResource):
 
 api.add_resource(TableAPI, '/api/tables', endpoint='tables')
 
-class GroupListAPI(BaseResource):
 
+class GroupListAPI(BaseResource):
     @require_permission('admin_groups')
     def get(self):
         groups = [g.to_dict() for g in models.Group.select()]
@@ -165,14 +164,13 @@ class GroupListAPI(BaseResource):
 
 
 class GroupAPI(BaseResource):
-
     @require_permission('admin_groups')
     def get(self, group_id):
         try:
             g = models.Group.get(models.Group.id == group_id)
         except models.Group.DoesNotExist:
             abort(404, message="Group not found.")
-        
+
         return g.to_dict()
 
     @require_permission('admin_groups')
@@ -190,8 +188,8 @@ class GroupAPI(BaseResource):
 
         return g.to_dict()
 
-class UserListAPI(BaseResource):
 
+class UserListAPI(BaseResource):
     @require_permission('admin_users')
     def get(self):
         users = [u.to_dict() for u in models.User.select()]
@@ -206,8 +204,6 @@ class UserListAPI(BaseResource):
 
 
 class UserAPI(BaseResource):
-
-
     @require_permission('admin_users')
     def get(self, user_id):
         try:
@@ -237,14 +233,27 @@ class UserAPI(BaseResource):
         u.groups = json["groups"]
         u.save()
 
-        return u.to_dict() 
+        return u.to_dict()
 
 
+class UserQueriesAPI(BaseResource):
+    def get(self, user_id):
+        user = models.User.get_by_id(user_id)
+        queries = [q.to_dict(with_result=False) for q in user.queries()]
+        return queries
 
+
+class UserDashboardsAPI(BaseResource):
+    def get(self, user_id):
+        user = models.User.get_by_id(user_id)
+        dashboards = [d.to_dict() for d in user.dashboards()]
+        return dashboards
 
 
 api.add_resource(UserListAPI, '/api/users', endpoint='users')
-api.add_resource(UserAPI, '/api/users/<int:user_id>', endpoint='user') 
+api.add_resource(UserAPI, '/api/users/<int:user_id>', endpoint='user')
+api.add_resource(UserQueriesAPI, '/api/users/<int:user_id>/queries', endpoint='user_queries')
+api.add_resource(UserDashboardsAPI, '/api/users/<int:user_id>/dashboards', endpoint='user_dashboards')
 api.add_resource(GroupListAPI, '/api/groups', endpoint='groups')
 api.add_resource(GroupAPI, '/api/groups/<int:group_id>', endpoint='group')
 
@@ -267,6 +276,7 @@ class MetricsAPI(BaseResource):
 
         return "OK."
 
+
 api.add_resource(MetricsAPI, '/api/metrics/v1/send', endpoint='metrics')
 
 
@@ -275,13 +285,14 @@ class DataSourceListAPI(BaseResource):
         data_sources = [ds.to_dict() for ds in models.DataSource.select()]
         return data_sources
 
+
 api.add_resource(DataSourceListAPI, '/api/data_sources', endpoint='data_sources')
 
 
 class DashboardListAPI(BaseResource):
     def get(self):
         dashboards = [d.to_dict() for d in
-                      models.Dashboard.select().where(models.Dashboard.is_archived==False)]
+                      models.Dashboard.select().where(models.Dashboard.is_archived == False)]
 
         return dashboards
 
@@ -321,6 +332,7 @@ class DashboardAPI(BaseResource):
         dashboard.is_archived = True
         dashboard.save()
 
+
 api.add_resource(DashboardListAPI, '/api/dashboards', endpoint='dashboards')
 api.add_resource(DashboardAPI, '/api/dashboards/<dashboard_slug>', endpoint='dashboard')
 
@@ -356,6 +368,7 @@ class WidgetListAPI(BaseResource):
 
         return {'widget': widget.to_dict(), 'layout': layout, 'new_row': new_row}
 
+
 class WidgetCheckApi(BaseResource):
     def get(self, query_id):
         try:
@@ -366,6 +379,7 @@ class WidgetCheckApi(BaseResource):
 
 
 api.add_resource(WidgetCheckApi, '/api/widget_check/<int:query_id>', endpoint='widget_check')
+
 
 class WidgetAPI(BaseResource):
     @require_permission('edit_dashboard')
@@ -379,6 +393,7 @@ class WidgetAPI(BaseResource):
         widget.dashboard.save()
 
         widget.delete_instance()
+
 
 api.add_resource(WidgetListAPI, '/api/widgets', endpoint='widgets')
 api.add_resource(WidgetAPI, '/api/widgets/<int:widget_id>', endpoint='widget')
@@ -402,19 +417,18 @@ class QueryListAPI(BaseResource):
 
     @require_permission('view_query')
     def get(self):
-
-        queries = [q.to_dict(with_result=False, with_stats=True)for q in models.Query.all_queries().where(models.Query.is_archived==False)]
+        queries = [q.to_dict(with_result=False, with_stats=True) for q in
+                   models.Query.all_queries().where(models.Query.is_archived == False)]
         return queries
 
-   
 
 class QueryAPI(BaseResource):
     @require_permission('edit_query')
-    def post(self, query_id):      
+    def post(self, query_id):
         query_def = request.get_json(force=True)
         for field in ['id', 'created_at', 'api_key', 'visualizations', 'latest_query_data']:
             query_def.pop(field, None)
-       
+
         if 'user' in query_def:
             user = query_def.pop('user')
             query_def['user'] = models.User.get_by_id(user["id"])
@@ -432,7 +446,7 @@ class QueryAPI(BaseResource):
         return query.to_dict(with_result=False, with_visualizations=True)
 
     @require_permission('view_query')
-    def get(self, query_id):        
+    def get(self, query_id):
         q = models.Query.get(models.Query.id == query_id)
         if q:
             return q.to_dict(with_visualizations=True)
@@ -483,6 +497,7 @@ class VisualizationAPI(BaseResource):
         vis = models.Visualization.get(models.Visualization.id == visualization_id)
         vis.delete_instance()
 
+
 api.add_resource(VisualizationListAPI, '/api/visualizations', endpoint='visualizations')
 api.add_resource(VisualizationAPI, '/api/visualizations/<visualization_id>', endpoint='visualization')
 
@@ -503,13 +518,14 @@ class QueryResultListAPI(BaseResource):
                 }
 
             if len(metadata.used_tables - current_user.allowed_tables) > 0 and '*' not in current_user.allowed_tables:
-                logging.warning('Permission denied for user %s to table %s', self.current_user.name, metadata.used_tables)
+                logging.warning('Permission denied for user %s to table %s', self.current_user.name,
+                                metadata.used_tables)
                 return {
                     'job': {
                         'error': 'Access denied for table(s): %s' % (metadata.used_tables)
                     }
                 }
-        
+
         models.ActivityLog(
             user=self.current_user,
             type=models.ActivityLog.QUERY_EXECUTION,
@@ -538,18 +554,16 @@ class QueryResultAPI(BaseResource):
         else:
             abort(404)
 
-def from_utc(utcTime,fmt="%Y-%m-%dT%H:%M:%S"):
+
+def from_utc(utcTime, fmt="%Y-%m-%dT%H:%M:%S"):
     """
     Convert UTC time string to time.struct_time
     """
     return datetime.datetime.strptime(utcTime, fmt)
 
+
 class CsvQueryResultsAPI(BaseResource):
     @require_permission('view_query')
-
-
-
-
     def get(self, query_id, query_result_id=None):
         if not query_result_id:
             query = models.Query.get(models.Query.id == query_id)
@@ -566,9 +580,9 @@ class CsvQueryResultsAPI(BaseResource):
             writer.writeheader()
             for row in query_data['rows']:
                 for k, v in row.iteritems():
-                    try:                        
-                        date = from_utc(v)                        
-                        row[k] = date                        
+                    try:
+                        date = from_utc(v)
+                        row[k] = date
                     except:
                         False
                 writer.writerow(row)
@@ -576,6 +590,7 @@ class CsvQueryResultsAPI(BaseResource):
             return make_response(s.getvalue(), 200, {'Content-Type': "text/csv; charset=UTF-8"})
         else:
             abort(404)
+
 
 api.add_resource(CsvQueryResultsAPI, '/api/queries/<query_id>/results/<query_result_id>.csv',
                  '/api/queries/<query_id>/results.csv',
@@ -594,7 +609,9 @@ class JobAPI(BaseResource):
         job = data.Job.load(data_manager.redis_connection, job_id)
         job.cancel()
 
+
 api.add_resource(JobAPI, '/api/jobs/<job_id>', endpoint='job')
+
 
 @app.route('/<path:filename>')
 def send_static(filename):
@@ -603,6 +620,3 @@ def send_static(filename):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-

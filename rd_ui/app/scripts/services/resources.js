@@ -449,6 +449,12 @@
     User.new = function (data) {
       return new User(data);
     };
+    User.prototype.queries = function(){
+      return $resource('/api/users/:id/queries', {id: '@id'}).query({id: this.id});
+    }
+    User.prototype.dashboards = function(){
+      return $resource('/api/users/:id/dashboards', {id: '@id'}).query({id: this.id});
+    }
     return User;
   }
 
@@ -481,7 +487,7 @@
       .factory('Group', ['$resource', Group])
       .factory('Users', ['$resource', Users])
       .factory('User', ['$resource', User])
-      .factory('Widget', ['$resource', 'Query', Widget])      
+      .factory('Widget', ['$resource', 'Query', Widget])
       .factory('Table', ['$resource', Table]);
 
 })();

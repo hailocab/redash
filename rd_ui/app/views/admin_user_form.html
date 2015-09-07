@@ -2,7 +2,7 @@
 <div class="container">
     <h1>Edit User<br /><br /></h1>
 
-    <form ng-submit="submit()" class="form-horizontal" role="form" id="userAddForm" novalidate ng-controller="AdminUserFormCtrl">
+    <form ng-submit="submit()" class="form-horizontal" role="form" id="userAddForm" novalidate>
         <div class="form-group">
             <label for="inputName1" class="col-sm-2 control-label">Name</label>
             <div style="padding-top:7px;" class="col-sm-4">
@@ -32,6 +32,18 @@
         <input class="form-control" id="inputName1" placeholder="Name" type="hidden" ng-model="name" name="text">
         <input class="form-control" id="inputName3" placeholder="Email" type="hidden" ng-model="email" name="text">
     </form>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <h2>{{name}}'s queries</h2>
+            <smart-table rows="queries" columns="queryColumns" config="tableConfig" class="table table-condensed table-hover"></smart-table>
+        </div>
+        <div class="col-lg-6">
+            <h2>{{name}}'s dashboards</h2>
+            <smart-table rows="dashboards" columns="dashboardColumns" config="tableConfig" class="table table-condensed table-hover"></smart-table>
+        </div>
+    </div>
+
 
 
 </div>

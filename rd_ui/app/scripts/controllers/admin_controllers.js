@@ -1,4 +1,11 @@
 (function() {
+    var dateFormatter = function(date) {
+      value = moment(date);
+      if (!value) return "-";
+      return value.format("DD/MM/YY HH:mm");
+    }
+
+
   var AdminStatusCtrl = function($scope, Events, $http, $timeout) {
     Events.record(currentUser, "view", "page", "admin/status");
     $scope.$parent.pageTitle = "System Status";
@@ -118,8 +125,35 @@
 
           // tables
           $scope.groups = groups;
+
+          user.queries().$promise.then(function(result){
+            $scope.queries = result;
+          });
+
+          user.dashboards().$promise.then(function(result){
+            $scope.dashboards = result;
+          })
+
         })
       }
+    }
+
+    $scope.queryColumns = [
+        {label: "Name", map: "name"},
+        {label: "Created At", map: "created_at", formatFunction: dateFormatter},
+        {label: "Actions", cellTemplateUrl: "/views/admin_user_form_query_actions_cell.html"}
+    ];
+    $scope.dashboardColumns = [
+        {label: "Name", map: "name"},
+        {label: "Created At", map: "created_at", formatFunction: dateFormatter},
+        {label: "Actions", cellTemplateUrl: "/views/admin_user_form_dashboard_actions_cell.html"}
+    ];
+
+    $scope.tableConfig = {
+      isPaginationEnabled: true,
+      itemsByPage: 50,
+      maxSize: 8,
+      isGlobalSearchActivated: false
     }
 
     var groups = new Groups();
@@ -224,12 +258,6 @@
       admin_groups: false,
       admin_users: false
     };
-
-    var dateFormatter = function(date) {
-      value = moment(date);
-      if (!value) return "-";
-      return value.format("DD/MM/YY HH:mm");
-    }
 
     var permissionsFormatter = function(permissions) {
       value = permissions.join(', ');
@@ -512,12 +540,6 @@
 
     if (!currentUser.hasPermission("admin_groups") && !currentUser.hasPermission("admin")) {
       $location.path("/");
-    }
-
-    var dateFormatter = function(date) {
-      value = moment(date);
-      if (!value) return "-";
-      return value.format("DD/MM/YY HH:mm");
     }
 
     var permissionsFormatter = function(permissions) {
