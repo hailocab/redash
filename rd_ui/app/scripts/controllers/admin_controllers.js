@@ -135,6 +135,12 @@
           })
 
         })
+
+        $scope.deleteUser = function() {
+          user.$delete(function(){
+            $location.path("/admin/users");
+          });
+        }
       }
     }
 

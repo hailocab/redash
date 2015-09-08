@@ -34,6 +34,12 @@
     </form>
 
     <div class="row">
+        <div class="col-lg-12">
+            <button class="btn btn-danger btn-lg" ng-hide="queries || dashboard" ng-click="deleteUser()">Delete</button>
+        </div>
+    </div>
+
+    <div class="row">
         <div class="col-lg-6">
             <h2>{{name}}'s queries</h2>
             <smart-table rows="queries" columns="queryColumns" config="tableConfig" class="table table-condensed table-hover"></smart-table>

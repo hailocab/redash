@@ -213,6 +213,16 @@ class UserAPI(BaseResource):
 
         return u.to_dict()
 
+    @require_permission('admin_users')
+    def delete(self, user_id):
+        try:
+            u = models.User.get(models.User.id == user_id)
+            u.delete_instance()
+        except models.User.DoesNotExist:
+            abort(404, message="User not found")
+
+        return {}
+
     def get(self, user_id):
         try:
             u = models.User.get(models.User.id == user_id)
