@@ -21,7 +21,11 @@
          </div>
          
          <div class="clear-fix"></div> 
-         <h6><small>Created by</small> <span  tooltip="{{email}}">{{name}}</span></h6>        
+         <h6>
+             <small>Owner</small>
+             <span ng-hide="currentUser.hasPermission('admin_users')" tooltip="{{email}}">{{name}}</span>
+             <select ng-show="currentUser.hasPermission('admin_users')" ng-model="dashboard.user_id" ng-change="changeOwner()" ng-options="ds.id as ds.name for ds in users"></select>
+         </h6>
 
     <filters></filters>
 </div>

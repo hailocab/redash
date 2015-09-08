@@ -1,5 +1,5 @@
 (function() {
-    var DashboardCtrl = function($scope, Events, Widget, Users, $routeParams, $http, $timeout, Dashboard) {
+    var DashboardCtrl = function($scope, Events, Widget, Users, $routeParams, $http, $timeout, Dashboard, growl) {
         Events.record(currentUser, "view", "dashboard", dashboard.id);
 
 
@@ -112,6 +112,16 @@
                 autoRefresh();
             }
         };
+
+        $scope.changeOwner = function() {
+            $http.post('/api/dashboards/' + $scope.dashboard.id, {
+                'name': $scope.dashboard.name,
+                'layout': JSON.stringify($scope.dashboard.layout),
+                "user_id": $scope.dashboard.user_id
+            }).success(function(response) {
+                growl.addSuccessMessage('Owner changed');
+            });
+        }
     };
 
 
@@ -149,6 +159,6 @@
     };
 
     angular.module('redash.controllers')
-        .controller('DashboardCtrl', ['$scope', 'Events', 'Widget', 'Users', '$routeParams', '$http', '$timeout', 'Dashboard', DashboardCtrl])
+        .controller('DashboardCtrl', ['$scope', 'Events', 'Widget', 'Users', '$routeParams', '$http', '$timeout', 'Dashboard', 'growl', DashboardCtrl])
         .controller('WidgetCtrl', ['$scope', 'Events', 'Query', WidgetCtrl])
 })();
