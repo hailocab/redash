@@ -217,6 +217,7 @@ class UserAPI(BaseResource):
     def delete(self, user_id):
         try:
             u = models.User.get(models.User.id == user_id)
+            models.ActivityLog.delete().where(models.User.id == user_id).execute()
             u.delete_instance()
         except models.User.DoesNotExist:
             abort(404, message="User not found")
