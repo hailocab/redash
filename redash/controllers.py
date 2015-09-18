@@ -333,10 +333,9 @@ class DashboardAPI(BaseResource):
         dashboard = models.Dashboard.get_by_id(dashboard_slug)
         dashboard.layout = dashboard_properties['layout']
         dashboard.name = dashboard_properties['name']
-        # if "user_id" in dashboard_properties:
-        #     dashboard.user = models.User.get_by_id(dashboard_properties["user_id"])
-        print dashboard
-
+        if "user_id" in dashboard_properties:
+            dashboard.user = models.User.get_by_id(dashboard_properties["user_id"])
+        
         dashboard.save()
 
         return dashboard.to_dict(with_widgets=True)
