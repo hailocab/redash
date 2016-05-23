@@ -31,7 +31,7 @@
             '<div class="panel-heading">{name}' +
             '</div></li>';
 
-          $scope.$watch('dashboard.widgets && dashboard.widgets.length', function(widgets_length) {
+          $scope.$watch('dashboard.layout', function() {
             $timeout(function() {
               gridster.remove_all_widgets();
 
@@ -57,7 +57,7 @@
                 });
               }
             });
-          });
+          }, true);
 
           $scope.saveDashboard = function() {
             $scope.saveInProgress = true;
@@ -81,21 +81,23 @@
               $scope.dashboard.layout = layout;
 
               layout = JSON.stringify(layout);
-              $http.post('/api/dashboards/' + $scope.dashboard.id, {
-                'name': $scope.dashboard.name,
-                'layout': layout
-              }).success(function(response) {
-                $scope.dashboard = new Dashboard(response);
+              Dashboard.save({slug: $scope.dashboard.id, name: $scope.dashboard.name, layout: layout}, function(dashboard) {
+                $scope.dashboard = dashboard;
                 $scope.saveInProgress = false;
                 $(element).modal('hide');
               });
               Events.record(currentUser, 'edit', 'dashboard', $scope.dashboard.id);
             } else {
 
-              $http.post('/api/dashboards', {
+              $http.post('api/dashboards', {
                 'name': $scope.dashboard.name
               }).success(function(response) {
                 $(element).modal('hide');
+                $scope.dashboard = {
+                  'name': null,
+                  'layout': null
+                };
+                $scope.saveInProgress = false;
                 $location.path('/dashboard/' + response.slug).replace();
               });
               Events.record(currentUser, 'create', 'dashboard');
@@ -137,27 +139,32 @@
 
           $scope.setType = function (type) {
             $scope.type = type;
+            if (type == 'textbox') {
+              $scope.widgetSizes.push({name: 'Hidden', value: 0});
+            } else if ($scope.widgetSizes.length > 2) {
+              $scope.widgetSizes.pop();
+            }
           };
 
           var reset = function() {
             $scope.saveInProgress = false;
             $scope.widgetSize = 1;
-            $scope.queryId = null;
             $scope.selectedVis = null;
-            $scope.query = null;
+            $scope.query = {};
+            $scope.selected_query = undefined;
             $scope.text = "";
           };
 
           reset();
 
           $scope.loadVisualizations = function () {
-            if (!$scope.queryId) {
+            if (!$scope.query.selected) {
               return;
             }
 
-            Query.get({ id: $scope.queryId }, function(query) {
+            Query.get({ id: $scope.query.selected.id }, function(query) {
               if (query) {
-                $scope.query = query;
+                $scope.selected_query = query;
                 if (query.visualizations.length) {
                   $scope.selectedVis = query.visualizations[0];
                 }
@@ -165,9 +172,22 @@
             });
           };
 
+          $scope.searchQueries = function (term) {
+            if (!term || term.length < 3) {
+              return;
+            }
+
+            Query.search({q: term}, function(results) {
+              $scope.queries = results;
+            });
+          };
+
+          $scope.$watch('query', function () {
+            $scope.loadVisualizations();
+          }, true);
+
           $scope.saveWidget = function() {
             $scope.saveInProgress = true;
-
             var widget = new Widget({
               'visualization_id': $scope.selectedVis && $scope.selectedVis.id,
               'dashboard_id': $scope.dashboard.id,
@@ -195,7 +215,6 @@
               $scope.saveInProgress = false;
             });
           }
-
         }
       }
     }

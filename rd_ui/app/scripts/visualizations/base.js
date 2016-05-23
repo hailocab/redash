@@ -6,7 +6,7 @@
       defaultOptions: {},
       skipTypes: false,
       editorTemplate: null
-    }
+    };
 
     this.registerVisualization = function (config) {
       var visualization = _.extend({}, defaultConfig, config);
@@ -24,7 +24,7 @@
     };
 
     this.getSwitchTemplate = function (property) {
-      var pattern = /(<[a-zA-Z0-9-]*?)( |>)/
+      var pattern = /(<[a-zA-Z0-9-]*?)( |>)/;
 
       var mergedTemplates = _.reduce(this.visualizations, function (templates, visualization) {
         if (visualization[property]) {
@@ -40,10 +40,10 @@
       mergedTemplates = '<div ng-switch on="visualization.type">' + mergedTemplates + "</div>";
 
       return mergedTemplates;
-    }
+    };
 
     this.$get = ['$resource', function ($resource) {
-      var Visualization = $resource('/api/visualizations/:id', {id: '@id'});
+      var Visualization = $resource('api/visualizations/:id', {id: '@id'});
       Visualization.visualizations = this.visualizations;
       Visualization.visualizationTypes = this.visualizationTypes;
       Visualization.renderVisualizationsTemplate = this.getSwitchTemplate('renderTemplate');
@@ -54,7 +54,23 @@
     }];
   };
 
-  var VisualizationRenderer = function (Visualization) {
+  var VisualizationName = function(Visualization) {
+    return {
+      restrict: 'E',
+      scope: {
+        visualization: '='
+      },
+      template: '{{name}}',
+      replace: false,
+      link: function (scope) {
+        if (Visualization.visualizations[scope.visualization.type].name !== scope.visualization.name) {
+          scope.name = scope.visualization.name;
+        }
+      }
+    };
+  };
+
+  var VisualizationRenderer = function ($location, Visualization) {
     return {
       restrict: 'E',
       scope: {
@@ -67,16 +83,13 @@
       template: '<filters></filters>\n' + Visualization.renderVisualizationsTemplate,
       replace: false,
       link: function (scope) {
-        scope.select2Options = {
-          width: '50%'
-        }
         scope.$watch('queryResult && queryResult.getFilters()', function (filters) {
           if (filters) {
             scope.filters = filters;
           }
         });
       }
-    }
+    };
   };
 
   var VisualizationOptionsEditor = function (Visualization) {
@@ -84,15 +97,36 @@
       restrict: 'E',
       template: Visualization.editorTemplate,
       replace: false
-    }
+    };
   };
 
   var Filters = function () {
     return {
       restrict: 'E',
       templateUrl: '/views/visualizations/filters.html'
-    }
-  }
+    };
+  };
+
+  var FilterValueFilter = function() {
+    return function(value, filter) {
+      if (_.isArray(value)) {
+        value = value[0];
+      }
+
+      // TODO: deduplicate code with table.js:
+      if (filter.column.type === 'date') {
+        if (value && moment.isMoment(value)) {
+          return value.format(clientConfig.dateFormat);
+        }
+      } else if (filter.column.type === 'datetime') {
+        if (value && moment.isMoment(value)) {
+          return value.format(clientConfig.dateTimeFormat);
+        }
+      }
+
+      return value;
+    };
+  };
 
   var EditVisualizationForm = function (Events, Visualization, growl) {
     return {
@@ -102,41 +136,42 @@
       scope: {
         query: '=',
         queryResult: '=',
-        visualization: '=?',
-        openEditor: '=?',
-        onNewSuccess: '=?'
+        originalVisualization: '=?',
+        onNewSuccess: '=?',
+        modalInstance: '=?'
       },
-      link: function (scope, element, attrs) {
+      link: function (scope) {
+        scope.visualization = angular.copy(scope.originalVisualization);
         scope.editRawOptions = currentUser.hasPermission('edit_raw_chart');
         scope.visTypes = Visualization.visualizationTypes;
 
-        scope.newVisualization = function (q) {
+        scope.newVisualization = function () {
           return {
-            'query_id': q.id,
             'type': Visualization.defaultVisualization.type,
             'name': Visualization.defaultVisualization.name,
-            'description': q.description || '',
+            'description': '',
             'options': Visualization.defaultVisualization.defaultOptions
           };
-        }
+        };
 
         if (!scope.visualization) {
-          // create new visualization
-          // wait for query to load to populate with defaults
-          var unwatch = scope.$watch('query', function (q) {
-            if (q && q.id) {
+          var unwatch = scope.$watch('query.id', function (queryId) {
+            if (queryId) {
               unwatch();
 
-              scope.visualization = scope.newVisualization(q);
+              scope.visualization = scope.newVisualization();
             }
-          }, true);
+          });
         }
 
         scope.$watch('visualization.type', function (type, oldType) {
           // if not edited by user, set name to match type
-          if (type && oldType != type && scope.visualization && scope.visForm != undefined && !scope.visForm.name.$dirty) {
-            // poor man's titlecase
-            scope.visualization.name = scope.visualization.type[0] + scope.visualization.type.slice(1).toLowerCase();
+          if (type && oldType !== type && scope.visualization && !scope.visForm.name.$dirty) {
+            scope.visualization.name = _.string.titleize(scope.visualization.type);
+          }
+
+          if (type && oldType !== type && scope.visualization) {
+            scope.visualization.options = Visualization.visualizations[scope.visualization.type].defaultOptions;
           }
         });
 
@@ -147,10 +182,10 @@
             Events.record(currentUser, "create", "visualization", null, {'type': scope.visualization.type});
           }
 
+          scope.visualization.query_id = scope.query.id;
+
           Visualization.save(scope.visualization, function success(result) {
             growl.addSuccessMessage("Visualization saved");
-
-            scope.visualization = scope.newVisualization(scope.query);
 
             var visIds = _.pluck(scope.query.visualizations, 'id');
             var index = visIds.indexOf(result.id);
@@ -161,19 +196,31 @@
               scope.query.visualizations.push(result);
               scope.onNewSuccess && scope.onNewSuccess(result);
             }
+            scope.modalInstance.close();
           }, function error() {
             growl.addErrorMessage("Visualization could not be saved");
           });
         };
-      }
-    }
-  };
 
+        scope.close = function() {
+          if (scope.visForm.$dirty) {
+            if (confirm("Are you sure you want to close the editor without saving?")) {
+              scope.modalInstance.close();
+            }
+          } else {
+            scope.modalInstance.close();
+          }
+        }
+      }
+    };
+  };
 
   angular.module('redash.visualization', [])
       .provider('Visualization', VisualizationProvider)
-      .directive('visualizationRenderer', ['Visualization', VisualizationRenderer])
+      .directive('visualizationRenderer', ['$location', 'Visualization', VisualizationRenderer])
       .directive('visualizationOptionsEditor', ['Visualization', VisualizationOptionsEditor])
+      .directive('visualizationName', ['Visualization', VisualizationName])
       .directive('filters', Filters)
-      .directive('editVisulatizationForm', ['Events', 'Visualization', 'growl', EditVisualizationForm])
+      .filter('filterValue', FilterValueFilter)
+      .directive('editVisulatizationForm', ['Events', 'Visualization', 'growl', EditVisualizationForm]);
 })();

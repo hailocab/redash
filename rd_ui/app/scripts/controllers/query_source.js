@@ -14,60 +14,70 @@
     var isNewQuery = !$scope.query.id,
         queryText = $scope.query.query,
         // ref to QueryViewCtrl.saveQuery
-        saveQuery = $scope.saveQuery,
-        shortcuts = {
-          'meta+s': function () {
-            if ($scope.canEdit) {
-              $scope.saveQuery();
-            }
-          },
-          'meta+enter': function () {
-            $scope.executeQuery();
-          }
-        };
+        saveQuery = $scope.saveQuery;
 
     $scope.sourceMode = true;
-    $scope.canEdit = currentUser.canEdit($scope.query);
+    $scope.canEdit = currentUser.canEdit($scope.query);// TODO: bring this back? || clientConfig.allowAllToEditQueries;
     $scope.isDirty = false;
+    $scope.base_url = $location.protocol()+"://"+$location.host()+":"+$location.port();
 
     $scope.newVisualization = undefined;
+
+    // @override
+    Object.defineProperty($scope, 'showDataset', {
+      get: function() {
+        return $scope.queryResult && $scope.queryResult.getStatus() == 'done';
+      }
+    });
+
+    var shortcuts = {
+      'meta+s': function () {
+        if ($scope.canEdit) {
+          $scope.saveQuery();
+        }
+      },
+      'ctrl+s': function () {
+        if ($scope.canEdit) {
+          $scope.saveQuery();
+        }
+      },
+      // Cmd+Enter for Mac
+      'meta+enter': $scope.executeQuery,
+      // Ctrl+Enter for PC
+      'ctrl+enter': $scope.executeQuery
+    };
 
     KeyboardShortcuts.bind(shortcuts);
 
     // @override
-    $scope.saveQuery = function(options, data) {      
+    $scope.saveQuery = function(options, data) {
       var savePromise = saveQuery(options, data);
 
       savePromise.then(function(savedQuery) {
         queryText = savedQuery.query;
         $scope.isDirty = $scope.query.query !== queryText;
+
         if (isNewQuery) {
           // redirect to new created query (keep hash)
-          $location.path(savedQuery.getSourceLink()).replace();
+          $location.path(savedQuery.getSourceLink());
         }
       });
 
       return savePromise;
     };
 
-    $scope.duplicateQuery = function(name) {
+    $scope.duplicateQuery = function() {
       Events.record(currentUser, 'fork', 'query', $scope.query.id);
+      $scope.query.name = 'Copy of (#'+$scope.query.id+') '+$scope.query.name;
       $scope.query.id = null;
-      $scope.query.ttl = -1;
-      $scope.query.is_archived = false;
-      $scope.query.name = name;
-      
-
+      $scope.query.schedule = null;
       $scope.saveQuery({
         successMessage: 'Query forked',
         errorMessage: 'Query could not be forked'
       }).then(function redirect(savedQuery) {
         // redirect to forked query (clear hash)
-        var x = $location.url(savedQuery.getSourceLink())
-        x.replace()
+        $location.url(savedQuery.getSourceLink()).replace()
       });
-
-
     };
 
     $scope.deleteVisualization = function($e, vis) {
@@ -87,7 +97,6 @@
         }, function () {
           growl.addErrorMessage("Error deleting visualization. Maybe it's used in a dashboard?");
         });
-
       }
     };
 
@@ -98,16 +107,6 @@
     $scope.$on('$destroy', function destroy() {
       KeyboardShortcuts.unbind(shortcuts);
     });
-
-    if (isNewQuery) {
-      // save new query when creating a visualization
-      var unbind = $scope.$watch('selectedTab == "add"', function(triggerSave) {
-        if (triggerSave) {
-          unbind();
-          $scope.saveQuery();
-        }
-      });
-    }
   }
 
   angular.module('redash.controllers').controller('QuerySourceCtrl', [

@@ -24,13 +24,17 @@ angular.module('redash.filters', []).
     return durationHumanize;
   })
 
-  .filter('refreshRateHumanize', function () {
-    return function (ttl) {
-      if (ttl == -1) {
+  .filter('scheduleHumanize', function() {
+    return function (schedule) {
+      if (schedule === null) {
         return "Never";
-      } else {
-        return "Every " + durationHumanize(ttl);
+      } else if (schedule.match(/\d\d:\d\d/) !== null) {
+        var parts = schedule.split(':');
+        var localTime = moment.utc().hour(parts[0]).minute(parts[1]).local().format('HH:mm');
+        return "Every day at " + localTime;
       }
+
+      return "Every " + durationHumanize(parseInt(schedule));
     }
   })
 
@@ -44,6 +48,9 @@ angular.module('redash.filters', []).
 
   .filter('colWidth', function () {
     return function (widgetWidth) {
+      if (widgetWidth == 0) {
+        return 0;
+      }
       if (widgetWidth == 1) {
         return 6;
       }
@@ -62,6 +69,12 @@ angular.module('redash.filters', []).
     }
   })
 
+  .filter('dateTime', function() {
+    return function(value) {
+      return moment(value).format(clientConfig.dateTimeFormat);
+    }
+  })
+
   .filter('linkify', function () {
     return function (text) {
       return text.replace(urlPattern, "$1<a href='$2' target='_blank'>$2</a>");
@@ -70,6 +83,41 @@ angular.module('redash.filters', []).
 
   .filter('markdown', ['$sce', function ($sce) {
     return function (text) {
-      return $sce.trustAsHtml(marked(text));
+      if (!text) {
+        return "";
+      }
+
+      var html = marked(text);
+      if (clientConfig.allowScriptsInUserInput) {
+        html = $sce.trustAsHtml(html);
+      }
+
+      return html;
     }
-  }]);
+  }])
+
+  .filter('trustAsHtml', ['$sce', function ($sce) {
+    return function (text) {
+      if (!text) {
+        return "";
+      }
+      return $sce.trustAsHtml(text);
+    }
+  }])
+
+  .filter('remove', function() {
+    return function(items, item) {
+      if (items == undefined)
+        return items;
+      if (item instanceof Array) {
+        var notEquals = function(other) { return item.indexOf(other) == -1; }
+      } else {
+        var notEquals = function(other) { return item != other;  }
+      }
+      var filtered = [];
+      for (var i = 0; i < items.length; i++)
+        if (notEquals(items[i]))
+          filtered.push(items[i])
+      return filtered;
+    };
+  });

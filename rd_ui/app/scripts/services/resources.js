@@ -1,7 +1,31 @@
 (function () {
-  var QueryResult = function ($resource, $timeout) {
-    var QueryResultResource = $resource('/api/query_results/:id', {id: '@id'}, {'post': {'method': 'POST'}});
-    var Job = $resource('/api/jobs/:id', {id: '@id'});
+  function QueryResultError(errorMessage) {
+    this.errorMessage = errorMessage;
+  }
+
+  QueryResultError.prototype.getError = function() {
+    return this.errorMessage;
+  };
+
+  QueryResultError.prototype.getStatus = function() {
+    return 'failed';
+  };
+
+  QueryResultError.prototype.getData = function() {
+    return null;
+  };
+
+  QueryResultError.prototype.getLog = function() {
+    return null;
+  };
+
+  QueryResultError.prototype.getChartData = function() {
+    return null;
+  };
+
+  var QueryResult = function ($resource, $timeout, $q) {
+    var QueryResultResource = $resource('api/query_results/:id', {id: '@id'}, {'post': {'method': 'POST'}});
+    var Job = $resource('api/jobs/:id', {id: '@id'});
 
     var updateFunction = function (props) {
       angular.extend(this, props);
@@ -10,21 +34,44 @@
         this.filters = undefined;
         this.filterFreeze = undefined;
 
+        var columnTypes = {};
+
+        // TODO: we should stop manipulating incoming data, and switch to relaying on the column type set by the backend.
+        // This logic is prone to errors, and better be removed. Kept for now, for backward compatability.
         _.each(this.query_result.data.rows, function (row) {
           _.each(row, function (v, k) {
-            if (_.isString(v) && v.match(/^\d{4}-\d{2}-\d{2}/)) {
-              row[k] = moment(v);
+            if (angular.isNumber(v)) {
+              columnTypes[k] = 'float';
+            } else if (_.isString(v) && v.match(/^\d{4}-\d{2}-\d{2}T/)) {
+              row[k] = moment.utc(v);
+              columnTypes[k] = 'datetime';
+            } else if (_.isString(v) && v.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              row[k] = moment.utc(v);
+              columnTypes[k] = 'date';
+            } else if (typeof(v) == 'object' && v !== null) {
+              row[k] = JSON.stringify(v);
             }
-          });
+          }, this);
+        }, this);
+
+        _.each(this.query_result.data.columns, function(column) {
+          if (columnTypes[column.name]) {
+            if (column.type == null || column.type == 'string') {
+              column.type = columnTypes[column.name];
+            }
+          }
         });
+
+        this.deferred.resolve(this);
       } else if (this.job.status == 3) {
         this.status = "processing";
       } else {
         this.status = undefined;
       }
-    }
+    };
 
     function QueryResult(props) {
+      this.deferred = $q.defer();
       this.job = {};
       this.query_result = {};
       this.status = "waiting";
@@ -70,6 +117,14 @@
       }
 
       return this.job.error;
+    }
+
+    QueryResult.prototype.getLog = function() {
+        if (!this.query_result.data  || !this.query_result.data.log || this.query_result.data.log.length == 0) {
+            return null;
+        }
+
+        return this.query_result.data.log;
     }
 
     QueryResult.prototype.getUpdatedAt = function () {
@@ -131,9 +186,24 @@
       }
 
       return this.filteredData;
-    }
+    };
 
-    QueryResult.prototype.getChartData = function () {
+    /**
+     * Helper function to add a point into a series
+     */
+    QueryResult.prototype._addPointToSeries = function (point, seriesCollection, seriesName) {
+      if (seriesCollection[seriesName] == undefined) {
+        seriesCollection[seriesName] = {
+          name: seriesName,
+          type: 'column',
+          data: []
+        };
+      }
+
+      seriesCollection[seriesName]['data'].push(point);
+    };
+
+    QueryResult.prototype.getChartData = function (mapping) {
       var series = {};
 
       _.each(this.getData(), function (row) {
@@ -143,8 +213,15 @@
         var yValues = {};
 
         _.each(row, function (value, definition) {
-          var type = definition.split("::")[1];
-          var name = definition.split("::")[0];
+          var name = definition.split("::")[0] || definition.split("__")[0];
+          var type = definition.split("::")[1] || definition.split("__")[1];
+          if (mapping) {
+            type = mapping[definition];
+          }
+
+          if (type == 'unused') {
+            return;
+          }
 
           if (type == 'x') {
             xValue = value;
@@ -162,35 +239,20 @@
             seriesName = String(value);
           }
 
-          if (type == 'multi-filter') {
+          if (type == 'multiFilter' || type == 'multi-filter') {
             seriesName = String(value);
           }
         });
 
-        var addPointToSeries = function (seriesName, point) {
-          if (series[seriesName] == undefined) {
-            series[seriesName] = {
-              name: seriesName,
-              type: 'column',
-              data: []
-            }
-          }
-
-          series[seriesName]['data'].push(point);
-        }
-
         if (seriesName === undefined) {
           _.each(yValues, function (yValue, seriesName) {
-            addPointToSeries(seriesName, {'x': xValue, 'y': yValue});
-          });
-        } else {
-          addPointToSeries(seriesName, point);
+            this._addPointToSeries({'x': xValue, 'y': yValue}, series, seriesName);
+          }.bind(this));
         }
-      });
-
-      _.each(series, function (series) {
-        series.data = _.sortBy(series.data, 'x');
-      });
+        else {
+          this._addPointToSeries(point, series, seriesName);
+        }
+      }.bind(this));
 
       return _.values(series);
     };
@@ -199,7 +261,7 @@
       if (this.columns == undefined && this.query_result.data) {
         this.columns = this.query_result.data.columns;
       }
-      
+
       return this.columns;
     }
 
@@ -214,27 +276,24 @@
     }
 
     QueryResult.prototype.getColumnNameWithoutType = function (column) {
-      var parts = column.split('::');
-      return parts[0];
-    };
+      var typeSplit;
+      if (column.indexOf("::") != -1) {
+        typeSplit = "::";
+      } else if (column.indexOf("__") != -1) {
+        typeSplit = "__";
+      } else {
+        return column;
+      }
 
-    var charConversionMap = {
-      '__pct': /%/g,
-      '_': / /g,
-      '__qm': /\?/g,
-      '__brkt': /[\(\)\[\]]/g,
-      '__dash': /-/g,
-      '__amp': /&/g
+      var parts = column.split(typeSplit);
+      if (parts[0] == "" && parts.length == 2) {
+        return parts[1];
+      }
+      return parts[0];
     };
 
     QueryResult.prototype.getColumnCleanName = function (column) {
       var name = this.getColumnNameWithoutType(column);
-
-      if (name != '') {
-        _.each(charConversionMap, function(regex, replacement) {
-          name = name.replace(regex, replacement);
-        });
-      }
 
       return name;
     }
@@ -267,16 +326,18 @@
 
     QueryResult.prototype.prepareFilters = function () {
       var filters = [];
-      var filterTypes = ['filter', 'multi-filter'];
-      _.each(this.getColumnNames(), function (col) {
-        var type = col.split('::')[1]
+      var filterTypes = ['filter', 'multi-filter', 'multiFilter'];
+      _.each(this.getColumns(), function (col) {
+        var name = col.name;
+        var type = name.split('::')[1] || name.split('__')[1];
         if (_.contains(filterTypes, type)) {
           // filter found
           var filter = {
-            name: col,
-            friendlyName: this.getColumnFriendlyName(col),
+            name: name,
+            friendlyName: this.getColumnFriendlyName(name),
+            column: col,
             values: [],
-            multiple: (type=='multi-filter')
+            multiple: (type=='multiFilter') || (type=='multi-filter')
           }
           filters.push(filter);
         }
@@ -298,7 +359,7 @@
       this.filters = filters;
     }
 
-    var refreshStatus = function (queryResult, query, ttl) {
+    var refreshStatus = function (queryResult, query) {
       Job.get({'id': queryResult.job.id}, function (response) {
         queryResult.update(response);
 
@@ -308,7 +369,7 @@
           });
         } else if (queryResult.getStatus() != "failed") {
           $timeout(function () {
-            refreshStatus(queryResult, query, ttl);
+            refreshStatus(queryResult, query);
           }, 3000);
         }
       })
@@ -322,16 +383,29 @@
       });
 
       return queryResult;
+    };
+
+    QueryResult.prototype.toPromise = function() {
+      return this.deferred.promise;
     }
 
-    QueryResult.get = function (data_source_id, query, ttl) {
+    QueryResult.get = function (data_source_id, query, maxAge, queryId) {
       var queryResult = new QueryResult();
 
-      QueryResultResource.post({'data_source_id': data_source_id, 'query': query, 'ttl': ttl}, function (response) {
+      var params = {'data_source_id': data_source_id, 'query': query, 'max_age': maxAge};
+      if (queryId !== undefined) {
+        params['query_id'] = queryId;
+      };
+
+      QueryResultResource.post(params, function (response) {
         queryResult.update(response);
 
         if ('job' in response) {
-          refreshStatus(queryResult, query, ttl);
+          refreshStatus(queryResult, query);
+        }
+      }, function(error) {
+        if (error.status === 403) {
+          queryResult.update(error.data);
         }
       });
 
@@ -341,107 +415,222 @@
     return QueryResult;
   };
 
-
   var Query = function ($resource, QueryResult, DataSource) {
-    var Query = $resource('/api/queries/:id', {id: '@id'});
-    var queryWidget  = $resource('/api/widget_check/:id');
+    var Query = $resource('api/queries/:id', {id: '@id'},
+      {
+        search: {
+          method: 'get',
+          isArray: true,
+          url: "api/queries/search"
+        },
+        recent: {
+          method: 'get',
+          isArray: true,
+          url: "api/queries/recent"
+        }});
 
     Query.newQuery = function () {
       return new Query({
         query: "",
         name: "New Query",
-        ttl: -1,
+        schedule: null,
         user: currentUser
       });
+    };
+
+    Query.collectParamsFromQueryString = function($location, query) {
+      var parameterNames = query.getParameters();
+      var parameters = {};
+
+      var queryString = $location.search();
+      _.each(parameterNames, function(param, i) {
+        var qsName = "p_" + param;
+        if (qsName in queryString) {
+          parameters[param] = queryString[qsName];
+        }
+      });
+
+      return parameters;
     };
 
     Query.prototype.getSourceLink = function () {
       return '/queries/' + this.id + '/source';
     };
 
-     Query.prototype.queryWidget = function () {
-      if (this.id != null) {
-        //return queryWidget.get({id:this.id});
-        return {};
-      }
-      return null;
+    Query.prototype.isNew = function() {
+      return this.id === undefined;
     };
 
-    Query.prototype.getQueryResult = function (ttl) {
-      if (ttl == undefined) {
-        ttl = this.ttl;
-      } 
+    Query.prototype.hasDailySchedule = function() {
+      return (this.schedule && this.schedule.match(/\d\d:\d\d/) !== null);
+    };
 
-      var queryResult = null;
-      
-      if (this.latest_query_data && ttl != 0) {
-       
+    Query.prototype.scheduleInLocalTime = function() {
+      var parts = this.schedule.split(':');
+      return moment.utc().hour(parts[0]).minute(parts[1]).local().format('HH:mm');
+    };
+
+    Query.prototype.hasResult = function() {
+      return !!(this.latest_query_data || this.latest_query_data_id);
+    };
+
+    Query.prototype.paramsRequired = function() {
+      var queryParameters = this.getParameters();
+      return !_.isEmpty(queryParameters);
+    };
+
+    Query.prototype.getQueryResult = function (maxAge, parameters) {
+      if (!this.query) {
+        return;
+      }
+      var queryText = this.query;
+
+      var queryParameters = this.getParameters();
+      var paramsRequired = !_.isEmpty(queryParameters);
+
+      var missingParams = parameters === undefined ? queryParameters : _.difference(queryParameters, _.keys(parameters));
+
+      if (paramsRequired && missingParams.length > 0) {
+        var paramsWord = "parameter";
+        if (missingParams.length > 1) {
+          paramsWord = "parameters";
+        }
+
+        return new QueryResult({job: {error: "Missing values for " + missingParams.join(', ')  + " "+paramsWord+".", status: 4}});
+      }
+
+      if (paramsRequired) {
+        queryText = Mustache.render(queryText, parameters);
+
+        // Need to clear latest results, to make sure we don't use results for different params.
+        this.latest_query_data = null;
+        this.latest_query_data_id = null;
+      }
+
+      if (this.latest_query_data && maxAge != 0) {
         if (!this.queryResult) {
           this.queryResult = new QueryResult({'query_result': this.latest_query_data});
-          
         }
-        queryResult = this.queryResult;
-      } else if (this.latest_query_data_id && ttl != 0) {
-        queryResult = QueryResult.getById(this.latest_query_data_id);
+      } else if (this.latest_query_data_id && maxAge != 0) {
+        if (!this.queryResult) {
+          this.queryResult = QueryResult.getById(this.latest_query_data_id);
+        }
       } else if (this.data_source_id) {
-        queryResult = QueryResult.get(this.data_source_id, this.query, ttl);
+        this.queryResult = QueryResult.get(this.data_source_id, queryText, maxAge, this.id);
+      } else {
+        return new QueryResultError("Please select data source to run this query.");
       }
 
-      return queryResult;
+      return this.queryResult;
     };
+
+    Query.prototype.getQueryResultPromise = function() {
+      return this.getQueryResult().toPromise();
+    };
+
+    Query.prototype.getParameters = function() {
+      var parts = Mustache.parse(this.query);
+      var parameters = [];
+      var collectParams = function(parts) {
+        parameters = [];
+        _.each(parts, function(part) {
+          if (part[0] == 'name' || part[0] == '&') {
+            parameters.push(part[1]);
+          } else if (part[0] == '#') {
+            parameters = _.union(parameters, collectParams(part[4]));
+          }
+        });
+        return parameters;
+      };
+
+      parameters = collectParams(parts);
+
+      return parameters;
+    }
 
     return Query;
   };
 
+
+
   var DataSource = function ($resource) {
-    var DataSourceResource = $resource('/api/data_sources/:id', {id: '@id'}, {'get': {'method': 'GET', 'cache': true, 'isArray': true}});
+    var actions = {
+      'get': {'method': 'GET', 'cache': false, 'isArray': false},
+      'query': {'method': 'GET', 'cache': false, 'isArray': true},
+      'getSchema': {'method': 'GET', 'cache': true, 'isArray': true, 'url': 'api/data_sources/:id/schema'}
+    };
+
+    var DataSourceResource = $resource('api/data_sources/:id', {id: '@id'}, actions);
 
     return DataSourceResource;
-  }
+  };
 
-
-  var Users = function ($resource) {
-    var UserResource = $resource('/api/users', {}, {'get': {'method': 'GET', 'cache': true, 'isArray': true}})
-    UserResource.prototype.getUsers = function () {
-      return UserResource.get();
+  var User = function ($resource, $http) {
+    var transformSingle = function(user) {
+      if (user.groups !== undefined) {
+        user.admin = user.groups.indexOf("admin") != -1;
+      }
     };
+
+    var transform = $http.defaults.transformResponse.concat(function(data, headers) {
+      if (_.isArray(data)) {
+        _.each(data, transformSingle);
+      } else {
+        transformSingle(data);
+      }
+      return data;
+    });
+
+    var actions = {
+      'get': {method: 'GET', transformResponse: transform},
+      'save': {method: 'POST', transformResponse: transform},
+      'query': {method: 'GET', isArray: true, transformResponse: transform},
+      'delete': {method: 'DELETE', transformResponse: transform}
+    };
+
+    var UserResource = $resource('api/users/:id', {id: '@id'}, actions);
+
     return UserResource;
-  }
-
-  
-  var Groups = function ($resource) {
-
-    var GroupResource = $resource('/api/groups', {}, {'get': {'method': 'GET', 'cache': true, 'isArray': true}})
-    GroupResource.prototype.get = function () {
-      return GroupResource.get();
-    };
-    return GroupResource;
-  }
+  };
 
   var Group = function ($resource) {
-    var Group = $resource('/api/groups/:id', {id: '@id'});
-    
-    Group.new = function (data) {
-      return new Group(data);
+    var actions = {
+      'get': {'method': 'GET', 'cache': false, 'isArray': false},
+      'query': {'method': 'GET', 'cache': false, 'isArray': true},
+      'members': {'method': 'GET', 'cache': false, 'isArray': true, 'url': 'api/groups/:id/members'},
+      'dataSources': {'method': 'GET', 'cache': false, 'isArray': true, 'url': 'api/groups/:id/data_sources'}
     };
-    return Group;
-  }
+    var resource = $resource('api/groups/:id', {id: '@id'}, actions);
+    return resource;
+  };
 
-  var Table = function ($resource) {
-    var Table = $resource('/api/tables', {});
-    return Table;
-  }
+  var AlertSubscription = function ($resource) {
+    var resource = $resource('api/alerts/:alertId/subscriptions/:userId', {alertId: '@alert_id', userId: '@user.id'});
+    return resource;
+  };
 
-  var User = function ($resource) {
-    var User = $resource('/api/users/:id', {id: '@id'});
-    User.new = function (data) {
-      return new User(data);
+  var Alert = function ($resource, $http) {
+    var actions = {
+      save: {
+        method: 'POST',
+        transformRequest: [function(data) {
+          var newData = _.extend({}, data);
+          if (newData.query_id === undefined) {
+            newData.query_id = newData.query.id;
+            delete newData.query;
+          }
+
+          return newData;
+        }].concat($http.defaults.transformRequest)
+      }
     };
-    return User;
-  }
+    var resource = $resource('api/alerts/:id', {id: '@id'}, actions);
+
+    return resource;
+  };
 
   var Widget = function ($resource, Query) {
-    var WidgetResource = $resource('/api/widgets/:id', {id: '@id'});
+    var WidgetResource = $resource('api/widgets/:id', {id: '@id'});
 
     WidgetResource.prototype.getQuery = function () {
       if (!this.query && this.visualization) {
@@ -462,14 +651,12 @@
   }
 
   angular.module('redash.services')
-      .factory('QueryResult', ['$resource', '$timeout', QueryResult])
+      .factory('QueryResult', ['$resource', '$timeout', '$q', QueryResult])
       .factory('Query', ['$resource', 'QueryResult', 'DataSource', Query])
       .factory('DataSource', ['$resource', DataSource])
-      .factory('Groups', ['$resource', Groups])
-      .factory('Group', ['$resource', Group])
-      .factory('Users', ['$resource', Users])
-      .factory('User', ['$resource', User])
-      .factory('Widget', ['$resource', 'Query', Widget])      
-      .factory('Table', ['$resource', Table]);
-
+      .factory('Alert', ['$resource', '$http', Alert])
+      .factory('AlertSubscription', ['$resource', AlertSubscription])
+      .factory('Widget', ['$resource', 'Query', Widget])
+      .factory('User', ['$resource', '$http', User])
+      .factory('Group', ['$resource', Group]);
 })();

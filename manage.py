@@ -2,148 +2,58 @@
 """
 CLI to manage redash.
 """
-import signal
-import logging
-import time
-from redash import settings, app, db, models, data_manager, __version__
-from redash.import_export import import_manager
-from flask.ext.script import Manager, prompt_pass
+import json
+
+from flask_script import Manager
+
+from redash import settings, models, __version__
+from redash.wsgi import app
+from redash.cli import users, groups, database, data_sources, organization
+from redash.monitor import get_status
 
 manager = Manager(app)
-database_manager = Manager(help="Manages the database (create/drop tables).")
-users_manager = Manager(help="Users management commands.")
-data_sources_manager = Manager(help="Data sources management commands.")
+manager.add_command("database", database.manager)
+manager.add_command("users", users.manager)
+manager.add_command("groups", groups.manager)
+manager.add_command("ds", data_sources.manager)
+manager.add_command("org", organization.manager)
+
+
 
 @manager.command
 def version():
     """Displays re:dash version."""
     print __version__
 
+@manager.command
+def status():
+    print json.dumps(get_status(), indent=2)
 
 @manager.command
 def runworkers():
-    """Starts the re:dash query executors/workers."""
-
-    def stop_handler(signum, frame):
-        logging.warning("Exiting; waiting for workers")
-        data_manager.stop_workers()
-        exit()
-
-    signal.signal(signal.SIGTERM, stop_handler)
-    signal.signal(signal.SIGINT, stop_handler)
-
-    old_workers = data_manager.redis_connection.smembers('workers')
-    data_manager.redis_connection.delete('workers')
-
-    logging.info("Cleaning old workers: %s", old_workers)
-
-    data_manager.start_workers(settings.WORKERS_COUNT)
-    logging.info("Workers started.")
-
-    while True:
-        try:
-            data_manager.refresh_queries()
-            data_manager.report_status()
-        except Exception as e:
-            logging.error("Something went wrong with refreshing queries...")
-            logging.exception(e)
-        time.sleep(60)
+    """Start workers (deprecated)."""
+    print "** This command is deprecated. Please use Celery's CLI to control the workers. **"
 
 
 @manager.shell
 def make_shell_context():
+    from redash.models import db
     return dict(app=app, db=db, models=models)
+
 
 @manager.command
 def check_settings():
-    from types import ModuleType
+    """Show the settings as re:dash sees them (useful for debugging)."""
+    for name, item in settings.all_settings().iteritems():
+        print "{} = {}".format(name, item)
 
-    for name in dir(settings):
-        item = getattr(settings, name)
-        if not callable(item) and not name.startswith("__") and not isinstance(item, ModuleType):
-            print "{} = {}".format(name, item)
+@manager.command
+def send_test_mail():
+    from redash import mail
+    from flask_mail import Message
 
-@database_manager.command
-def create_tables():
-    """Creates the database tables."""
-    from redash.models import create_db, init_db
+    mail.send(Message(subject="Test Message from re:dash", recipients=[settings.MAIL_DEFAULT_SENDER], body="Test message."))
 
-    create_db(True, False)
-    init_db()
-
-@database_manager.command
-def drop_tables():
-    """Drop the database tables."""
-    from redash.models import create_db
-
-    create_db(False, True)
-
-
-@users_manager.option('email', help="User's email")
-@users_manager.option('name', help="User's full name")
-@users_manager.option('--admin', dest='is_admin', action="store_true", default=False, help="set user as admin")
-@users_manager.option('--google', dest='google_auth', action="store_true", default=False, help="user uses Google Auth to login")
-@users_manager.option('--password', dest='password', default=None, help="Password for users who don't use Google Auth (leave blank for prompt).")
-@users_manager.option('--groups', dest='groups', default=models.Group.DEFAULT_PERMISSIONS, help="Comma seperated list of groups (leave blank for default).")
-def create(email, name, groups, is_admin=False, google_auth=False, password=None):
-    print "Creating user (%s, %s)..." % (email, name)
-    print "Admin: %r" % is_admin
-    print "Login with Google Auth: %r\n" % google_auth
-    if isinstance(groups, basestring):
-        groups= groups.split(',')
-        groups.remove('') # in case it was empty string
-
-    if is_admin:
-        groups += ['admin']
-
-    user = models.User(email=email, name=name, groups=groups)
-    if not google_auth:
-        password = password or prompt_pass("Password")
-        user.hash_password(password)
-
-    try:
-        user.save()
-    except Exception, e:
-        print "Failed creating user: %s" % e.message
-
-
-@users_manager.option('email', help="email address of user to delete")
-def delete(email):
-    deleted_count = models.User.delete().where(models.User.email == email).execute()
-    print "Deleted %d users." % deleted_count
-
-@data_sources_manager.command
-def import_from_settings(name=None):
-    """Import data source from settings (env variables)."""
-    name = name or "Default"
-    data_source = models.DataSource.create(name=name,
-                                           type=settings.CONNECTION_ADAPTER,
-                                           options=settings.CONNECTION_STRING)
-
-    print "Imported data source from settings (id={}).".format(data_source.id)
-
-
-@data_sources_manager.command
-def list():
-    """List currently configured data sources"""
-    for ds in models.DataSource.select():
-        print "Name: {}\nType: {}\nOptions: {}".format(ds.name, ds.type, ds.options)
-
-@data_sources_manager.command
-def new(name, type, options):
-    """Create new data source"""
-    # TODO: validate it's a valid type and in the future, validate the options.
-    print "Creating {} data source ({}) with options:\n{}".format(type, name, options)
-    data_source = models.DataSource.create(name=name,
-                                           type=type,
-                                           options=options)
-    print "Id: {}".format(data_source.id)
-
-
-manager.add_command("database", database_manager)
-manager.add_command("users", users_manager)
-manager.add_command("import", import_manager)
-manager.add_command("ds", data_sources_manager)
 
 if __name__ == '__main__':
     manager.run()

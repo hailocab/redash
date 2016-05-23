@@ -3,12 +3,18 @@
 
   chartVisualization.config(['VisualizationProvider', function (VisualizationProvider) {
     var renderTemplate = '<chart-renderer options="visualization.options" query-result="queryResult"></chart-renderer>';
-    var editTemplate = '<chart-editor></chart-editor>';
+    var editTemplate = '<chart-editor options="visualization.options" query-result="queryResult"></chart-editor>';
+
     var defaultOptions = {
-      'series': {
-        'type': 'column',
-        'stacking': null
-      }
+      globalSeriesType: 'column',
+      sortX: true,
+      legend: {enabled: true},
+      yAxis: [{type: 'linear'}, {type: 'linear', opposite: true}],
+      xAxis: {type: 'datetime', labels: {enabled: true}},
+      series: {stacking: null},
+      seriesOptions: {},
+      columnMapping: {},
+      bottomMargin: 50
     };
 
     VisualizationProvider.registerVisualization({
@@ -27,98 +33,183 @@
         queryResult: '=',
         options: '=?'
       },
-      template: "<chart options='chartOptions' series='chartSeries' class='graph'></chart>",
+      templateUrl: '/views/visualizations/chart.html',
       replace: false,
       controller: ['$scope', function ($scope) {
         $scope.chartSeries = [];
-        $scope.chartOptions = {};
 
-        $scope.$watch('options', function (chartOptions) {
-          if (chartOptions) {
-            $scope.chartOptions = chartOptions;
-          }
-        });
-        $scope.$watch('queryResult && queryResult.getData()', function (data) {
-          if (!data || $scope.queryResult.getData() == null) {
-            $scope.chartSeries.splice(0, $scope.chartSeries.length);
-          } else {
-            $scope.chartSeries.splice(0, $scope.chartSeries.length);
+        var reloadChart = function() {
+          reloadData();
+          $scope.plotlyOptions = $scope.options;
+        };
 
-            _.each($scope.queryResult.getChartData(), function (s) {
-              $scope.chartSeries.push(_.extend(s, {'stacking': 'normal'}));
-            });
+        var reloadData = function() {
+          if (angular.isDefined($scope.queryResult)) {
+            $scope.chartSeries = _.sortBy($scope.queryResult.getChartData($scope.options.columnMapping),
+                                          function(series) {
+                                            if ($scope.options.seriesOptions[series.name]) {
+                                              return $scope.options.seriesOptions[series.name].zIndex;
+                                            }
+                                            return 0;
+                                          });
           }
-        });
+        };
+
+        $scope.$watch('options', reloadChart, true);
+        $scope.$watch('queryResult && queryResult.getData()', reloadData);
       }]
-    }
+    };
   });
 
-  chartVisualization.directive('chartEditor', function () {
+  chartVisualization.directive('chartEditor', function (ColorPalette) {
     return {
       restrict: 'E',
       templateUrl: '/views/visualizations/chart_editor.html',
+      scope: {
+        queryResult: '=',
+        options: '=?'
+      },
       link: function (scope, element, attrs) {
-        scope.seriesTypes = {
-          'Line': 'line',
-          'Column': 'column',
-          'Area': 'area',
-          'Scatter': 'scatter',
-          'Pie': 'pie'
-        };
+        scope.currentTab = 'general';
+        scope.colors = _.extend({'Automatic': null}, ColorPalette);
 
         scope.stackingOptions = {
-          "None": "none",
-          "Normal": "normal",
-          "Percent": "percent"
+          'Disabled': null,
+          'Enabled': 'normal',
+          'Percent': 'percent'
         };
 
-        scope.xAxisOptions = {
-          "Date/Time": "datetime",
-          "Linear": "linear",
-          "Category": "category"
+        scope.chartTypes = {
+          'line': {name: 'Line', icon: 'line-chart'},
+          'column': {name: 'Bar', icon: 'bar-chart'},
+          'area': {name: 'Area', icon: 'area-chart'},
+          'pie': {name: 'Pie', icon: 'pie-chart'},
+          'scatter': {name: 'Scatter', icon: 'circle-o'}
         };
 
-        scope.xAxisType = "datetime";
-        scope.stacking = "none";
+        scope.chartTypeChanged = function() {
+          _.each(scope.options.seriesOptions, function(options) {
+            options.type = scope.options.globalSeriesType;
+          });
+        };
 
-        var chartOptionsUnwatch = null;
+        scope.xAxisScales = ['datetime', 'linear', 'logarithmic', 'category'];
+        scope.yAxisScales = ['linear', 'logarithmic', 'datetime'];
 
-        scope.$watch('visualization', function (visualization) {
-          if (visualization && visualization.type == 'CHART') {
-            if (scope.visualization.options.series.stacking === null) {
-              scope.stacking = "none";
-            } else if (scope.visualization.options.series.stacking === undefined) {
-              scope.stacking = "normal";
-            } else {
-              scope.stacking = scope.visualization.options.series.stacking;
-            }
-
-            chartOptionsUnwatch = scope.$watch("stacking", function (stacking) {
-              if (stacking == "none") {
-                scope.visualization.options.series.stacking = null;
-              } else {
-                scope.visualization.options.series.stacking = stacking;
-              }
+        var refreshColumns = function() {
+          scope.columns = scope.queryResult.getColumns();
+          scope.columnNames = _.pluck(scope.columns, 'name');
+          if (scope.columnNames.length > 0) {
+            _.each(_.difference(_.keys(scope.options.columnMapping), scope.columnNames), function(column) {
+              delete scope.options.columnMapping[column];
             });
+          }
+        };
 
-            scope.xAxisType = (scope.visualization.options.xAxis && scope.visualization.options.xAxis.type) || scope.xAxisType;
+        refreshColumns();
 
-            xAxisUnwatch = scope.$watch("xAxisType", function (xAxisType) {
-              scope.visualization.options.xAxis = scope.visualization.options.xAxis || {};
-              scope.visualization.options.xAxis.type = xAxisType;
-            });
-          } else {
-            if (chartOptionsUnwatch) {
-              chartOptionsUnwatch();
-              chartOptionsUnwatch = null;
-            }
+        var refreshColumnsAndForm = function() {
+          refreshColumns();
+          if (!scope.queryResult.getData() || scope.queryResult.getData().length == 0 || scope.columns.length == 0)
+            return;
+          scope.form.yAxisColumns = _.intersection(scope.form.yAxisColumns, scope.columnNames);
+          if (!_.contains(scope.columnNames, scope.form.xAxisColumn))
+            scope.form.xAxisColumn = undefined;
+          if (!_.contains(scope.columnNames, scope.form.groupby))
+            scope.form.groupby = undefined;
+        }
 
-            if (xAxisUnwatch) {
-              xAxisUnwatch();
-              xAxisUnwatch = null;
-            }
+        var refreshSeries = function() {
+          var seriesNames = _.pluck(scope.queryResult.getChartData(scope.options.columnMapping), 'name');
+          var existing = _.keys(scope.options.seriesOptions);
+          _.each(_.difference(seriesNames, existing), function(name) {
+            scope.options.seriesOptions[name] = {
+              'type': scope.options.globalSeriesType,
+              'yAxis': 0,
+            };
+            scope.form.seriesList.push(name);
+          });
+          _.each(_.difference(existing, seriesNames), function(name) {
+            scope.form.seriesList = _.without(scope.form.seriesList, name)
+            delete scope.options.seriesOptions[name];
+          });
+        };
+
+        scope.$watch('options.columnMapping', function() {
+          if (scope.queryResult.status === "done") {
+            refreshSeries();
+          }
+        }, true);
+
+        scope.$watch(function() {return [scope.queryResult.getId(), scope.queryResult.status];}, function(changed) {
+          if (!changed[0] || changed[1] !== "done") {
+            return;
+          }
+
+          refreshColumnsAndForm();
+          refreshSeries();
+        }, true);
+
+        scope.form = {
+          yAxisColumns: [],
+          seriesList: _.sortBy(_.keys(scope.options.seriesOptions), function(name) {
+            return scope.options.seriesOptions[name].zIndex;
+          })
+        };
+
+        scope.$watchCollection('form.seriesList', function(value, old) {
+          _.each(value, function(name, index) {
+            scope.options.seriesOptions[name].zIndex = index;
+            scope.options.seriesOptions[name].index = 0; // is this needed?
+          });
+        });
+
+        var setColumnRole = function(role, column) {
+          scope.options.columnMapping[column] = role;
+        }
+        var unsetColumn = function(column) {
+          setColumnRole('unused', column);
+        }
+
+        scope.$watchCollection('form.yAxisColumns', function(value, old) {
+          _.each(old, unsetColumn);
+          _.each(value, _.partial(setColumnRole, 'y'));
+        });
+
+        scope.$watch('form.xAxisColumn', function(value, old) {
+          if (old !== undefined)
+            unsetColumn(old);
+          if (value !== undefined)
+            setColumnRole('x', value);
+        });
+
+        scope.$watch('form.groupby', function(value, old) {
+          if (old !== undefined)
+            unsetColumn(old)
+          if (value !== undefined) {
+            setColumnRole('series', value);
           }
         });
+
+        if (!_.has(scope.options, 'legend')) {
+          scope.options.legend = {enabled: true};
+        }
+
+        if (!_.has(scope.options, 'bottomMargin')) {
+          scope.options.bottomMargin = 50;
+        }
+
+        if (scope.columnNames)
+          _.each(scope.options.columnMapping, function(value, key) {
+            if (scope.columnNames.length > 0 && !_.contains(scope.columnNames, key))
+              return;
+            if (value == 'x')
+              scope.form.xAxisColumn = key;
+            else if (value == 'y')
+              scope.form.yAxisColumns.push(key);
+            else if (value == 'series')
+              scope.form.groupby = key;
+          });
       }
     }
   });

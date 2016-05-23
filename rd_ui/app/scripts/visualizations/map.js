@@ -1,78 +1,238 @@
-(function () {
-  var mapVisualization = angular.module('redash.visualization');
+'use strict';
 
-  mapVisualization.config(['VisualizationProvider', function (VisualizationProvider) {
+(function() {
+  var module = angular.module('redash.visualization');
+
+  module.config(['VisualizationProvider', function(VisualizationProvider) {
+    var renderTemplate =
+      '<map-renderer ' +
+      'options="visualization.options" query-result="queryResult">' +
+      '</map-renderer>';
+
+    var editTemplate = '<map-editor></map-editor>';
+    var defaultOptions = {
+      'height': 500,
+      'draw': 'Marker',
+      'classify':'none'
+    };
+
     VisualizationProvider.registerVisualization({
       type: 'MAP',
       name: 'Map',
-      renderTemplate: '<map-renderer class="col-lg-12" query-result="queryResult"></map-renderer>'
+      renderTemplate: renderTemplate,
+      editorTemplate: editTemplate,
+      defaultOptions: defaultOptions
     });
-  }]);
+  }
+  ]);
 
-  mapVisualization.directive('mapRenderer', function () {
+  module.directive('mapRenderer', function() {
     return {
       restrict: 'E',
-      scope: {
-        queryResult: '='
-      },
-      template: '',
-      replace: false,
-      link: function($scope, element, attrs) {
-        var map = L.mapbox.map(element[0]);
-        var layer = null;
-        
-        $scope.$watch(
+      templateUrl: '/views/visualizations/map.html',
+      link: function($scope, elm, attrs) {
+
+        var setBounds = function(){
+          var b = $scope.visualization.options.bounds;
+
+          if(b){
+            $scope.map.fitBounds([[b._southWest.lat, b._southWest.lng],[b._northEast.lat, b._northEast.lng]]);
+          } else if ($scope.features.length > 0){
+            var group= new L.featureGroup($scope.features);
+            $scope.map.fitBounds(group.getBounds());
+          }
+        };
+
+        $scope.$watch('[queryResult && queryResult.getData(), visualization.options.draw,visualization.options.latColName,'+
+            'visualization.options.lonColName,visualization.options.classify,visualization.options.classify]',
           function() {
-            return element.is(':visible');
-          }, 
-          function(isVisible) {
-            $scope.isVisible = isVisible;
-          }
-        );
-        
-        $scope.$watch('queryResult && queryResult.getData() && isVisible', function (data) {
-          if (!data) {
-            return;
-          }
-          
-          if ($scope.queryResult.getData() == null) {
-          } else {
-            var data = $.extend(true, [], $scope.queryResult.getData());
-            var latlngs = [];
-            
-            _.each(data, function(row){
-              if (row.lat != undefined && row.lon != undefined) {
-                latlngs.push({
-                  type: 'Feature',
-                  geometry: {
-                    type: 'Point',
-                    coordinates: [row.lon, row.lat]
-                  },
-                  properties: {
-                    // title: 'A Single Marker',
-                    // description: 'Just one of me',
-                    'marker-size': 'small',
-                    'marker-color': '#FFB200'
-                  }
+            var marker = function(lat,lon){
+              if (lat == null || lon == null) return;
+
+              return L.marker([lat, lon]);
+            };
+
+            var heatpoint = function(lat,lon,obj){
+              if (lat == null || lon == null) return;
+
+              var color = 'red';
+
+              if (obj &&
+                obj[$scope.visualization.options.classify] &&
+                $scope.visualization.options.classification){
+                var v =  $.grep($scope.visualization.options.classification,function(e){
+                  return e.value == obj[$scope.visualization.options.classify];
+                });
+                if (v.length >0) color = v[0].color;
+              }
+
+              var style = {
+                fillColor:color,
+                fillOpacity:0.5,
+                stroke:false
+              };
+
+              return L.circleMarker([lat,lon],style)
+            };
+
+            var color = function(val){
+              // taken from http://jsfiddle.net/xgJ2e/2/
+
+              var h= Math.floor((100 - val) * 120 / 100);
+              var s = Math.abs(val - 50)/50;
+              var v = 1;
+
+              var rgb, i, data = [];
+              if (s === 0) {
+                rgb = [v,v,v];
+              } else {
+                h = h / 60;
+                i = Math.floor(h);
+                data = [v*(1-s), v*(1-s*(h-i)), v*(1-s*(1-(h-i)))];
+                switch(i) {
+                  case 0:
+                    rgb = [v, data[2], data[0]];
+                    break;
+                  case 1:
+                    rgb = [data[1], v, data[0]];
+                    break;
+                  case 2:
+                    rgb = [data[0], v, data[2]];
+                    break;
+                  case 3:
+                    rgb = [data[0], data[1], v];
+                    break;
+                  case 4:
+                    rgb = [data[2], data[0], v];
+                    break;
+                  default:
+                    rgb = [v, data[0], data[1]];
+                    break;
+                }
+              }
+              return '#' + rgb.map(function(x){
+                return ("0" + Math.round(x*255).toString(16)).slice(-2);
+              }).join('');
+            };
+
+            // Following line is used to avoid "Couldn't autodetect L.Icon.Default.imagePath" error
+            // https://github.com/Leaflet/Leaflet/issues/766#issuecomment-7741039
+            L.Icon.Default.imagePath = L.Icon.Default.imagePath || "//api.tiles.mapbox.com/mapbox.js/v2.2.1/images";
+
+            function getBounds(e) {
+              $scope.visualization.options.bounds = $scope.map.getBounds();
+            }
+
+            var queryData = $scope.queryResult.getData();
+            var classify = $scope.visualization.options.classify;
+
+            if (queryData) {
+              $scope.visualization.options.classification = [];
+
+              for (var row in queryData) {
+                if (queryData[row][classify] &&
+                  $.grep($scope.visualization.options.classification, function (e) {
+                    return e.value == queryData[row][classify]
+                  }).length == 0) {
+                  $scope.visualization.options.classification.push({value: queryData[row][classify], color: null});
+                }
+              }
+
+              $.each($scope.visualization.options.classification, function (i, c) {
+                c.color = color(parseInt((i / $scope.visualization.options.classification.length) * 100));
+              });
+
+              if (!$scope.map) {
+                $scope.map = L.map(elm[0].children[0].children[0])
+              }
+
+              L.tileLayer('//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+              }).addTo($scope.map);
+
+              $scope.features = $scope.features || [];
+
+              var tmp_features = [];
+
+              var lat_col = $scope.visualization.options.latColName || 'lat';
+              var lon_col = $scope.visualization.options.lonColName || 'lon';
+
+              for (var row in queryData) {
+                var feature;
+
+                if ($scope.visualization.options.draw == 'Marker') {
+                  feature = marker(queryData[row][lat_col], queryData[row][lon_col])
+                } else if ($scope.visualization.options.draw == 'Color') {
+                  feature = heatpoint(queryData[row][lat_col], queryData[row][lon_col], queryData[row])
+                }
+
+                if (!feature) continue;
+
+                var obj_description = '<ul style="list-style-type: none;padding-left: 0">';
+                for (var k in queryData[row]){
+                  obj_description += "<li>" + k + ": " + queryData[row][k] + "</li>";
+                }
+                obj_description += '</ul>';
+                feature.bindPopup(obj_description);
+                tmp_features.push(feature);
+              }
+
+              $.each($scope.features, function (i, f) {
+                $scope.map.removeLayer(f);
+              });
+
+              $scope.features = tmp_features;
+
+              $.each($scope.features, function (i, f) {
+                f.addTo($scope.map)
+              });
+
+              setBounds();
+
+              $scope.map.on('focus',function(){
+                $scope.map.on('moveend', getBounds);
+              });
+
+              $scope.map.on('blur',function(){
+                $scope.map.off('moveend', getBounds);
+              });
+
+
+              // We redraw the map if it was loaded in a hidden tab
+              if ($('a[href="#'+$scope.visualization.id+'"]').length > 0) {
+
+                $('a[href="#'+$scope.visualization.id+'"]').on('click', function () {
+                  setTimeout(function() {
+                    $scope.map.invalidateSize(false);
+
+                    setBounds();
+                  },500);
                 });
               }
-            });
-            
-            if (latlngs.length > 0) {
-              if (layer != null) {
-                map.removeLayer(layer);
-              }
-              
-              map.setView([0,0], 10).addLayer(L.mapbox.tileLayer('hailocabs.g9mb2ka2', {
-                detectRetina: true
-              }));
-              
-              layer = L.mapbox.featureLayer(latlngs).addTo(map);
-              map.fitBounds(layer.getBounds());
+
             }
-          }
+          }, true);
+
+        $scope.$watch('visualization.options.height', function() {
+
+          if (!$scope.map) return;
+          $scope.map.invalidateSize(false);
+          setBounds();
+
         });
       }
     }
   });
-}());
+
+  module.directive('mapEditor', function() {
+    return {
+      restrict: 'E',
+      templateUrl: '/views/visualizations/map_editor.html',
+      link: function($scope, elm, attrs) {
+        $scope.draw_options = ['Marker','Color'];
+        $scope.classify_columns = $scope.queryResult.columnNames.concat('none');
+      }
+    }
+  });
+
+})();
