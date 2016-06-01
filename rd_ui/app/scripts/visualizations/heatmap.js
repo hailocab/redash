@@ -5,7 +5,7 @@
     VisualizationProvider.registerVisualization({
       type: 'HEATMAP',
       name: 'Heatmap',
-      renderTemplate: '<heatmap-renderer class="col-lg-12" query-result="queryResult"></heatmap-renderer>'
+      renderTemplate: '<heatmap-renderer style="height: 500px;" class="col-lg-12" query-result="queryResult"></heatmap-renderer>'
     });
   }]);
 
@@ -17,8 +17,8 @@
       var total = data.length;
   
       _.each(data, function(row){
-        var lat = row[0] * Math.PI / 180;
-        var lon = row[1] * Math.PI / 180;
+        var lat = row.lat * Math.PI / 180;
+        var lon = row.lng * Math.PI / 180;
     
         x += Math.cos(lat) * Math.cos(lon);
         y += Math.cos(lat) * Math.sin(lon);
@@ -44,7 +44,7 @@
       template: '',
       replace: false,
       link: function($scope, element, attrs) {
-        var map = L.mapbox.map(element[0]);
+        var map = L.map(element[0]);
         var layer = null;
         
         $scope.$watch(
@@ -57,6 +57,7 @@
         );
         
         $scope.$watch('queryResult && queryResult.getData() && isVisible', function (data) {
+          
           if (!data) {
             return;
           }
@@ -67,8 +68,8 @@
             var latlngs = [];
             
             _.each(data, function(row){
-              if (row.lat != undefined && row.lon != undefined) {
-                latlngs.push([row.lat, row.lon]);
+              if (row.lat != undefined && row.lat !== "" && row.lon != undefined && row.lon !== "") {
+                latlngs.push(L.latLng(row.lat, row.lon));
               }
             });
             
@@ -78,11 +79,7 @@
               if (layer != null) {
                 map.removeLayer(layer);
               }
-              
-              map.setView(center, 10).addLayer(L.mapbox.tileLayer('hailocabs.g9mb2ka2', {
-                detectRetina: true
-              }));
-              
+              map.setView(center, 10).addLayer(new L.Google('ROADMAP'));
               layer = L.heatLayer(latlngs, {maxZoom: 12, blur: 50}).addTo(map);
             }
           }

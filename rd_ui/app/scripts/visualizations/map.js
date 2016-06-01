@@ -146,9 +146,7 @@
                 $scope.map = L.map(elm[0].children[0].children[0])
               }
 
-              L.tileLayer('//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-              }).addTo($scope.map);
+              $scope.map.addLayer(new L.Google('ROADMAP'));
 
               $scope.features = $scope.features || [];
 
