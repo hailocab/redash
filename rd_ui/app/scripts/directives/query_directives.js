@@ -236,26 +236,21 @@
                   <option value="">No Refresh</option>\
                   </select>',
       link: function($scope) {
-        $scope.refreshOptions = [
-            {
-                value: "60",
-                name: 'Every minute'
-            }
-        ];
+        $scope.refreshOptions = [];
 
-        _.each([5, 10, 15, 30], function(i) {
-          $scope.refreshOptions.push({
-            value: String(i*60),
-            name: "Every " + i + " minutes"
-          })
-        });
+        // _.each([5, 10, 15, 30], function(i) {
+        //   $scope.refreshOptions.push({
+        //     value: String(i*60),
+        //     name: "Every " + i + " minutes"
+        //   })
+        // });
 
-        _.each(_.range(1, 13), function (i) {
-            $scope.refreshOptions.push({
-                value: String(i * 3600),
-                name: 'Every ' + i + 'h'
-            });
-        })
+        // _.each(_.range(1, 13), function (i) {
+        //     $scope.refreshOptions.push({
+        //         value: String(i * 3600),
+        //         name: 'Every ' + i + 'h'
+        //     });
+        // })
 
         $scope.refreshOptions.push({
             value: String(24 * 3600),
