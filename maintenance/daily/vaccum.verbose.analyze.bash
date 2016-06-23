@@ -15,9 +15,7 @@ PORT=`echo ${REDASH_DATABASE_URL} | cut -d':' -f4 | cut -d'/' -f1`
 export PGUSER=${USER}
 export PGPASSWORD=${PASSWORD}
 
-#/bin/echo -e '\\timing\ndelete from query_results qr where qr.id not in (select q.latest_query_data_id from queries q where q.latest_query_data_id is not null); vacuum verbose analyze query_results;' | psql --host=${HOST} --port=${PORT} ${DATABASE} --no-password --echo-all 1>${OUTPUT} 2>&1
-
-/bin/echo -e '\\timing\nvacuum verbose analyze query_results;' | psql --host=${HOST} --port=${PORT} ${DATABASE} --no-password --echo-all 1>${OUTPUT} 2>&1
+/bin/echo -e '\\timing\ndelete from query_results qr where qr.id not in (select q.latest_query_data_id from queries q where q.latest_query_data_id is not null);vacuum verbose analyze query_results;' | psql --host=${HOST} --port=${PORT} ${DATABASE} --no-password --echo-all 1>${OUTPUT} 2>&1
 
 if [ "${?}" != "0" ]
 then
